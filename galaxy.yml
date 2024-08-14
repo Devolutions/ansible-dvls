@@ -1,0 +1,16 @@
+namespace: devolutions
+name: dvls
+version: 1.0.0
+readme: README.md
+authors:
+- Danny Bédard <devops@devolutions.net>
+description: This Ansible module allows you to authenticate with DVLS (Devolutions Server) and fetch secrets by name or ID.
+license: MIT
+license_file: ''
+tags: [dvls, secrets, devolutions, password]
+dependencies: {}
+repository: https://github.com/Devolutions/ansible-dvls
+documentation: https://github.com/Devolutions/ansible-dvls
+homepage: https://github.com/Devolutions/ansible-dvls
+issues: https://github.com/Devolutions/ansible-dvls/issues
+build_ignore: [.github]
