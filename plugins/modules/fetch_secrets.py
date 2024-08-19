@@ -5,7 +5,7 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: dvls
+module: fetch_secrets
 
 short_description: Fetch secrets from DVLS
 
@@ -52,7 +52,7 @@ author:
 EXAMPLES = r'''
 # Fetch secrets from DVLS
 - name: Fetch secrets
-  dvls:
+  devolutions.dvls.fetch_secrets:
     server_base_url: "https://example.yourcompagny.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
