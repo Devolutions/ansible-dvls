@@ -1,0 +1,25 @@
+name: Publish to Ansible Galaxy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    environment: publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: ansible-galaxy collection build
+
+      - name: Publish to Ansible Galaxy
+        run: ansible-galaxy collection publish *.tar.gz --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-dvls-collection
+          path: '*.tar.gz'
