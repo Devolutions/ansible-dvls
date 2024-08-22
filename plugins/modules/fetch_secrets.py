@@ -129,8 +129,11 @@ def get_vault_entries(server_base_url, token, vault_id):
     }
 
     response = requests.get(vault_url, headers=vault_headers)
-    result = response.json()
-    return result.get('data', [])
+    try:
+        result = response.json()
+        return result.get('data', [])
+    except ValueError:
+        return {}
 
 def run_module():
     module_args = dict(
