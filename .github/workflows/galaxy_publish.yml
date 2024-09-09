@@ -19,7 +19,7 @@ jobs:
         run: ansible-galaxy collection publish *.tar.gz --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4.3.6.3.6
         with:
           name: ansible-dvls-collection
           path: '*.tar.gz'
