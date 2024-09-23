@@ -196,8 +196,8 @@ def run_module():
 
     except Exception as e:
         module.fail_json(msg=str(e), **result)
-
-    logout(server_base_url, token)
+    finally:
+        logout(server_base_url, token)
 
     module.exit_json(**result)
 
