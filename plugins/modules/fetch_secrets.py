@@ -111,6 +111,20 @@ def find_entry_by_name(entries, name):
             return entry
     return None
 
+def get_vaults(server_base_url, token):
+    vaults_url = f"{server_base_url}/api/v1/vault"
+    vaults_headers = {
+        "Content-Type": "application/json",
+        "tokenId": token
+    }
+
+    response = requests.get(vaults_url, headers=vaults_headers)
+    try:
+        result = response.json()
+        return result.get('data', [])
+    except ValueError:
+        return []
+
 def get_vault_entry(server_base_url, token, vault_id, entry_id):
     vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry_id}"
     vault_headers = {
@@ -119,7 +133,10 @@ def get_vault_entry(server_base_url, token, vault_id, entry_id):
     }
 
     response = requests.get(vault_url, headers=vault_headers)
-    return response.json()
+    try:
+        return response.json()
+    except ValueError:
+        return {}
 
 def get_vault_entries(server_base_url, token, vault_id):
     vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
@@ -140,7 +157,7 @@ def run_module():
         server_base_url=dict(type='str', required=True),
         app_key=dict(type='str', required=True),
         app_secret=dict(type='str', required=True),
-        vault_id=dict(type='str', required=True),
+        vault_id=dict(type='str', required=False),
         secrets=dict(
             type='list',
             elements='dict',
@@ -148,7 +165,7 @@ def run_module():
                 secret_name=dict(type='str', required=False),
                 secret_id=dict(type='str', required=False)
             ),
-            required=True
+            required=False
         )
     )
 
@@ -165,8 +182,12 @@ def run_module():
     server_base_url = module.params['server_base_url']
     app_key = module.params['app_key']
     app_secret = module.params['app_secret']
-    vault_id = module.params['vault_id']
-    secrets = module.params['secrets']
+
+    try:
+        vault_id = module.params.get('vault_id')
+        secrets = module.params.get('secrets')
+    except Exception as e:
+        module.fail_json(msg=str(e), **result)
 
     try:
         token = login(server_base_url, app_key, app_secret)
@@ -174,25 +195,43 @@ def run_module():
         entries = get_vault_entries(server_base_url, token, vault_id)
         fetched_secrets = {}
 
-        for secret in secrets:
-            secret_name = secret.get('secret_name')
-            secret_id = secret.get('secret_id')
+        if secrets:
+            if not vault_id:
+                module.fail_json(msg="Vault ID is required when specifying secrets.", **result)
 
-            if not secret_name and not secret_id:
-                module.fail_json(msg="Each secret must have either a secret_name or a secret_id", **result)
+            for secret in secrets:
+                secret_name = secret.get('secret_name')
+                secret_id = secret.get('secret_id')
 
-            if secret_id:
-                entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
-                fetched_secrets[secret_id] = entry['data']
-            else:
-                entry = find_entry_by_name(entries, secret_name)
-                if not entry:
-                    module.fail_json(msg=f"Secret '{secret_name}' not found", **result)
-                secret_id = entry['id']
-                entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
-                fetched_secrets[secret_name] = entry['data']
+                if not secret_name and not secret_id:
+                    module.fail_json(msg="Each secret must have either a secret_name or a secret_id", **result)
 
-        result = fetched_secrets
+                if secret_id:
+                    entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
+                    fetched_secrets[secret_id] = entry['data']
+                else:
+                    entry = find_entry_by_name(entries, secret_name)
+                    if not entry:
+                        module.fail_json(msg=f"Secret '{secret_name}' not found", **result)
+                    secret_id = entry['id']
+                    entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
+                    fetched_secrets[secret_name] = entry['data']
+        else:
+            vaults = (
+                [{'id': vault_id}]
+                if vault_id else get_vaults(server_base_url, token)
+            )
+
+            for vault in vaults:
+                vault_id = vault['id']
+                entries = get_vault_entries(server_base_url, token, vault_id)
+                fetched_secrets[vault_id] = {}
+
+                for entry in entries:
+                    entry_name = entry['name']
+                    fetched_secrets[vault_id][entry_name] = entry['data']
+
+        result = {'secrets': fetched_secrets}
 
     except Exception as e:
         module.fail_json(msg=str(e), **result)

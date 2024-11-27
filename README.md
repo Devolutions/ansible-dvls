@@ -15,7 +15,7 @@ export DVLS_APP_KEY="your_app_key_here"
 export DVLS_APP_SECRET="your_app_secret_here"
 ```
 
-## Usage
+## Usage with static secrets file
 
 ### Example secrets.yml
 Define the secrets you want to fetch in ```secrets.yml```:
@@ -54,6 +54,59 @@ Use the following playbook to authenticate with DVLS and fetch the secrets defin
       debug:
         msg: "{{ secrets['name-or-id'].value }}"
 ```
+
+## Usage importing all secrets
+
+### Example playbook.yml using a VaultID
+Use the following playbook to authenticate with DVLS and fetch every secrets from a defined VaultID:
+
+```yaml
+---
+- name: Fetch secrets from DVLS
+  hosts: localhost
+  tasks:
+    - name: Fetch secrets
+      devolutions.dvls.fetch_secrets:
+        server_base_url: "https://example.yourcompagny.com"
+        app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+        app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+        vault_id: "00000000-0000-0000-0000-000000000000"
+      register: secrets
+
+    - name: Dump secrets
+      debug:
+        msg: "{{ secrets }}"
+
+    - name: Dump a secret
+      debug:
+        msg: "{{ secrets['name-or-id'].value }}"
+```
+
+### Example playbook.yml using a VaultID
+Use the following playbook to authenticate with DVLS and fetch every secrets from every vault in your server:
+
+```yaml
+---
+- name: Fetch secrets from DVLS
+  hosts: localhost
+  tasks:
+    - name: Fetch secrets
+      devolutions.dvls.fetch_secrets:
+        server_base_url: "https://example.yourcompagny.com"
+        app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+        app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+      register: secrets
+
+    - name: Dump secrets
+      debug:
+        msg: "{{ secrets }}"
+
+    - name: Dump a secret
+      debug:
+        msg: "{{ secrets['name-or-id'].value }}"
+```
+
+## Secrets definition
 
 To access a particular field within a secret, you can use the format ```{{ secrets['name-or-id'].value }}```. Here’s a breakdown of the available categories and their fields:
 
