@@ -1,6 +1,7 @@
 name: Publish to Ansible Galaxy
 
 on:
+  release:
   workflow_dispatch:
 
 jobs:

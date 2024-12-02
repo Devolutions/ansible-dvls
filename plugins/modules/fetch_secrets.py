@@ -50,8 +50,7 @@ author:
 '''
 
 EXAMPLES = r'''
-# Fetch secrets from DVLS
-- name: Fetch secrets
+- name: Fetch secrets from DVLS
   devolutions.dvls.fetch_secrets:
     server_base_url: "https://example.yourcompagny.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
@@ -72,38 +71,11 @@ secrets:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.auth import login, logout
+from ansible.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries
 import os
 import json
 import requests
-
-def login(server_base_url, app_key, app_secret):
-    login_url = f"{server_base_url}/api/v1/login"
-    login_data = {
-        "appKey": app_key,
-        "appSecret": app_secret
-    }
-    login_headers = {
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(login_url, headers=login_headers, data=json.dumps(login_data))
-    auth_response = response.json()
-    token = auth_response.get('tokenId')
-
-    if not token or token == "null":
-        raise Exception("Failed to login or obtain token.")
-
-    return token
-
-def logout(server_base_url, token):
-    logout_url = f"{server_base_url}/api/v1/logout"
-    logout_headers = {
-        "Content-Type": "application/json",
-        "tokenId": token
-    }
-
-    requests.post(logout_url, headers=logout_headers)
-    return None
 
 def find_entry_by_name(entries, name):
     for entry in entries:
@@ -111,53 +83,12 @@ def find_entry_by_name(entries, name):
             return entry
     return None
 
-def get_vaults(server_base_url, token):
-    vaults_url = f"{server_base_url}/api/v1/vault"
-    vaults_headers = {
-        "Content-Type": "application/json",
-        "tokenId": token
-    }
-
-    response = requests.get(vaults_url, headers=vaults_headers)
-    try:
-        result = response.json()
-        return result.get('data', [])
-    except ValueError:
-        return []
-
-def get_vault_entry(server_base_url, token, vault_id, entry_id):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry_id}"
-    vault_headers = {
-        "Content-Type": "application/json",
-        "tokenId": token
-    }
-
-    response = requests.get(vault_url, headers=vault_headers)
-    try:
-        return response.json()
-    except ValueError:
-        return {}
-
-def get_vault_entries(server_base_url, token, vault_id):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {
-        "Content-Type": "application/json",
-        "tokenId": token
-    }
-
-    response = requests.get(vault_url, headers=vault_headers)
-    try:
-        result = response.json()
-        return result.get('data', [])
-    except ValueError:
-        return {}
-
 def run_module():
     module_args = dict(
         server_base_url=dict(type='str', required=True),
         app_key=dict(type='str', required=True),
         app_secret=dict(type='str', required=True),
-        vault_id=dict(type='str', required=False),
+        vault_id=dict(type='str', required=True),
         secrets=dict(
             type='list',
             elements='dict',
@@ -217,21 +148,13 @@ def run_module():
                     entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
                     fetched_secrets[secret_name] = entry['data']
         else:
-            vaults = (
-                [{'id': vault_id}]
-                if vault_id else get_vaults(server_base_url, token)
-            )
+            entries = get_vault_entries(server_base_url, token, vault_id)
 
-            for vault in vaults:
-                vault_id = vault['id']
-                entries = get_vault_entries(server_base_url, token, vault_id)
-                fetched_secrets[vault_id] = {}
+            for entry in entries:
+                entry_name = entry['name']
+                fetched_secrets[entry_name] = entry['data']
 
-                for entry in entries:
-                    entry_name = entry['name']
-                    fetched_secrets[vault_id][entry_name] = entry['data']
-
-        result = {'secrets': fetched_secrets}
+        result = fetched_secrets
 
     except Exception as e:
         module.fail_json(msg=str(e), **result)
