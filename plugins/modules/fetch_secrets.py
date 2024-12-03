@@ -52,7 +52,7 @@ author:
 EXAMPLES = r'''
 - name: Fetch secrets from DVLS
   devolutions.dvls.fetch_secrets:
-    server_base_url: "https://example.yourcompagny.com"
+    server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
     vault_id: "00000000-0000-0000-0000-000000000000"
@@ -71,8 +71,8 @@ secrets:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.auth import login, logout
-from ansible.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries
 import os
 import json
 import requests
