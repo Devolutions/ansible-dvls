@@ -86,10 +86,45 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
 ---
 - name: Fetch dvls server information
     server:
-    server_base_url: "https://dvls-ops.devolutions.com"
+    server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
     register: server
+
+- name: Fetch URI
+  debug:
+    msg: "{{ server.accessURI }}"
+
+- name: Fetch a vault from the list
+  debug:
+    msg: "{{ server.vaults[1].id }}"
+```
+
+Example response
+
+```json
+{
+    "server": {
+        "accessURI": "https://example.dvls-server.com/",
+        "changed": false,
+        "expirationDate": "2030-12-31T23:59:59",
+        "failed": false,
+        "vaults": [
+            {
+                "description": "User vault for personal entries",
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "type": "User"
+            },
+            {
+                "description": "Shared vault for organization",
+                "id": "987f6543-d21c-43ba-987f-123456789abc",
+                "name": "Organization vault",
+                "type": "Shared"
+            }
+        ],
+        "version": "2025.1.0.0"
+    }
+}
 ```
 
 ## Secrets definition

@@ -127,9 +127,6 @@ def run_module():
         fetched_secrets = {}
 
         if secrets:
-            if not vault_id:
-                module.fail_json(msg="Vault ID is required when specifying secrets.", **result)
-
             for secret in secrets:
                 secret_name = secret.get('secret_name')
                 secret_id = secret.get('secret_id')
@@ -148,8 +145,6 @@ def run_module():
                     entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
                     fetched_secrets[secret_name] = entry['data']
         else:
-            entries = get_vault_entries(server_base_url, token, vault_id)
-
             for entry in entries:
                 entry_name = entry['name']
                 fetched_secrets[entry_name] = entry['data']

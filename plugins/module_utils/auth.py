@@ -14,8 +14,9 @@ def login(server_base_url, app_key, app_secret):
 
     try:
         response = requests.post(login_url, headers=login_headers, data=json.dumps(login_data))
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Failed to login: {str(e)}")
+        response.raise_for_status()
+    except Exception as e:
+        raise Exception(f"Failed to login: Unable to reach the server. Verify your network connection and server URL: {e}")
 
     auth_response = response.json()
     token = auth_response.get('tokenId')

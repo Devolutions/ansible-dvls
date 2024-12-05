@@ -34,7 +34,7 @@ author:
 EXAMPLES = r'''
 - name: Fetch dvls server information
     server:
-    server_base_url: "https://dvls-ops.devolutions.com"
+    server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
     register: server
@@ -83,6 +83,13 @@ def run_module():
         public_info = public_instance_information(server_base_url, token)
         private_info = private_instance_information(server_base_url, token)
 
+        if 'expirationDate' not in public_info['data']:
+            raise KeyError("expirationDate missing from fetched server")
+        if 'version' not in public_info['data']:
+            raise KeyError("version missing from fetched server']")
+        if 'accessURI' not in private_info['data']:
+            raise KeyError("accessURI missing from fetched server")
+
         result = {
             'expirationDate': public_info['data'].get('expirationDate'),
             'version': public_info['data'].get('version'),
@@ -90,6 +97,8 @@ def run_module():
             'vaults': vaults
         }
 
+    except KeyError as ke:
+        module.fail_json(msg=f"Missing expected data from server: {str(ke)}", **result)
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
