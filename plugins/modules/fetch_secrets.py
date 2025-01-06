@@ -145,8 +145,9 @@ def run_module():
                     entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
                     fetched_secrets[secret_name] = entry['data']
         else:
-            for entry in entries:
-                entry_name = entry['name']
+            for secret in entries:
+                entry_name = secret['name']
+                entry = get_vault_entry(server_base_url, token, vault_id, secret['id'])
                 fetched_secrets[entry_name] = entry['data']
 
         result = fetched_secrets
