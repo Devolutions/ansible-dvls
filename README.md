@@ -89,7 +89,7 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
-    register: server
+  register: server
 
 - name: Fetch URI
   debug:
