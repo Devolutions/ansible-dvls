@@ -147,3 +147,22 @@ For example, if you want to access the ```apiId``` from an ```API key secret```,
 ```yaml
 {{ secrets['some api key'].apiId }}
 ```
+
+## Usage writing secrets
+
+If there is an existing secret in that path, it will update the secret. Otherwise a new secret entry will be created.
+When a new secret was created, the module will return the entry ID. If an existing entry was updated, nothing will be returned.
+
+```yaml
+- name: Upload Credentials to DVLS
+  devolutions.dvls.create_secret:
+    server_base_url: "https://example.yourcompany.com"
+    app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+    app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+    vault_id: "00000000-0000-0000-0000-000000000000"
+    secret_path: "path\\to\\folder"
+    secret:
+      - secret_name: "my_secret_1"
+      - password: "p@ssw0rd1"
+  register: secrets
+```

@@ -76,7 +76,7 @@ EXAMPLES = r'''
     vault_id: "00000000-0000-0000-0000-000000000000"
     secret:
       - secret_name: "my_secret_1"
-      - password: 
+      - password: "p@ssw0rd1"
   register: secrets
 '''
 
