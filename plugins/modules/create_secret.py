@@ -75,8 +75,8 @@ EXAMPLES = r'''
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
     vault_id: "00000000-0000-0000-0000-000000000000"
     secret:
-      - secret_name: "my_secret_1"
-      - password: "p@ssw0rd1"
+      secret_name: "my_secret_1"
+      password: "p@ssw0rd1"
   register: secrets
 '''
 

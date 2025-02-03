@@ -162,7 +162,7 @@ When a new secret was created, the module will return the entry ID. If an existi
     vault_id: "00000000-0000-0000-0000-000000000000"
     secret_path: "path\\to\\folder"
     secret:
-      - secret_name: "my_secret_1"
-      - password: "p@ssw0rd1"
+      secret_name: "my_secret_1"
+      password: "p@ssw0rd1"
   register: secrets
 ```
