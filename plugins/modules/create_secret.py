@@ -126,22 +126,19 @@ def run_module():
     app_key = module.params['app_key']
     app_secret = module.params['app_secret']
 
-    try:
-        vault_id = module.params.get('vault_id')
-        secret = module.params.get('secret')
-    except Exception as e:
-        module.fail_json(msg=str(e), **result)
+    secret = module.params.get('secret')
+    secret_name = secret.get('secret_name')
+    password = secret.get('password')
+
+    vault_id = module.params.get('vault_id')
+    secret_type = module.params['secret_type']
+    secret_subtype = module.params['secret_subtype']
+    secret_path = module.params['secret_path']
+    description = module.params['secret_description']
 
     try:
         token = login(server_base_url, app_key, app_secret)
         entries = get_vault_entries(server_base_url, token, vault_id)
-
-        secret_name = secret.get('secret_name')
-        password = secret.get('password')
-        secret_type = module.params['secret_type']
-        secret_subtype = module.params['secret_subtype']
-        secret_path = module.params['secret_path']
-        description = module.params['secret_description']
 
         vault_headers = {
             "Content-Type": "application/json",
@@ -161,11 +158,7 @@ def run_module():
         }
 
         #this filters the response by path (folder)
-        if secret_path:
-            path_entries = []
-            for entry in entries:
-                if entry['path'] == secret_path:
-                    path_entries.append(entry)
+        path_entries = [entry for entry in entries if entry.get('path') == secret_path] if secret_path else entries
 
         #when an existing entry is found, it gets updated. Otherwise a new entry gets created
         entry = find_entry_by_name(path_entries, secret_name)
