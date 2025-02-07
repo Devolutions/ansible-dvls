@@ -58,7 +58,7 @@ options:
                 description: the entry name/username.
                 required: true
                 type: str
-            password:
+            value:
                 description: the password.
                 required: true
                 type: str
