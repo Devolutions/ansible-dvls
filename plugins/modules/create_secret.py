@@ -30,24 +30,6 @@ options:
         description: The ID of the vault to access.
         required: true
         type: str
-    secret_path:
-        description: the (Folder-)Path where the secret should end up.
-        required: false
-        type: str
-    secret_type:
-        description: the type of secret that will get created.
-        required: false
-        type: str
-        default: Credentials
-    secret_subtype:
-        description: the secret subtype.
-        required: false
-        type: str
-        default: Default
-    secret_description:
-        description: the description for the secret.
-        required: false
-        type: str
     secret:
         description: the credential object, containing username and password.
         required: true
@@ -61,6 +43,24 @@ options:
             value:
                 description: the password.
                 required: true
+                type: str
+            secret_path:
+                description: the (Folder-)Path where the secret should end up.
+                required: false
+                type: str
+            secret_type:
+                description: the type of secret that will get created.
+                required: false
+                type: str
+                default: Credentials
+            secret_subtype:
+                description: the secret subtype.
+                required: false
+                type: str
+                default: Default
+            secret_description:
+                description: the description for the secret.
+                required: false
                 type: str
 
 author:
@@ -76,13 +76,13 @@ EXAMPLES = r'''
     vault_id: "00000000-0000-0000-0000-000000000000"
     secret:
       secret_name: "my_secret_1"
-      password: "p@ssw0rd1"
+      value: "p@ssw0rd1"
   register: secrets
 '''
 
 RETURN = r'''
 id:
-    description: when a new entry is created, the ID of that Entry will be returned. When an Entry is updated, nothing will be returned.
+    description: returns the ID of the created/updated entry.
     type: dict
     returned: changed
 '''
@@ -98,19 +98,20 @@ def run_module():
         app_key=dict(type='str', required=True),
         app_secret=dict(type='str', required=True),
         vault_id=dict(type='str', required=True),
-        secret_path=dict(type='str', required=False),
-        secret_type=dict(type='str', required=False, default='Credential'),
-        secret_subtype=dict(type='str', required=False, default='Default'),
-        secret_description=dict(type='str', required=False),
         secret=dict(
             type='dict',
             options=dict(
                 secret_name=dict(type='str', required=True),
-                password=dict(type='str', required=True)
+                value=dict(type='str', required=True),
+                secret_path=dict(type='str', required=False),
+                secret_type=dict(type='str', required=False, default='Credential'),
+                secret_subtype=dict(type='str', required=False, default='Default'),
+                secret_description=dict(type='str', required=False),
             ),
             required=True
         )
     )
+
 
     result = dict()
 
@@ -126,15 +127,15 @@ def run_module():
     app_key = module.params['app_key']
     app_secret = module.params['app_secret']
 
-    secret = module.params.get('secret')
+    secret = module.params.get('value')
     secret_name = secret.get('secret_name')
     password = secret.get('password')
+    secret_type = secret.get('secret_type')
+    secret_subtype = secret.get('secret_subtype')
+    secret_path = secret.get('secret_path')
+    description = secret.get('secret_description')
 
     vault_id = module.params.get('vault_id')
-    secret_type = module.params['secret_type']
-    secret_subtype = module.params['secret_subtype']
-    secret_path = module.params['secret_path']
-    description = module.params['secret_description']
 
     try:
         token = login(server_base_url, app_key, app_secret)
@@ -166,6 +167,7 @@ def run_module():
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry['id']}"
             response = requests.put(vault_url, headers=vault_headers, json=vault_body)
             response.raise_for_status()
+            result['id'] = entry['id']
         else:
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
             response = requests.post(vault_url, headers=vault_headers, json=vault_body)
