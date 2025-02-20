@@ -127,9 +127,9 @@ def run_module():
     app_key = module.params['app_key']
     app_secret = module.params['app_secret']
 
-    secret = module.params.get('value')
+    secret = module.params.get('secret')
     secret_name = secret.get('secret_name')
-    password = secret.get('password')
+    password = secret.get('value')
     secret_type = secret.get('secret_type')
     secret_subtype = secret.get('secret_subtype')
     secret_path = secret.get('secret_path')
