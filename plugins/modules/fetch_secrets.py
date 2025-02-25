@@ -72,7 +72,7 @@ secrets:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entry_from_name, get_vault_entry_from_tag, get_vault_entry_from_type, get_vault_entry_from_path, get_vault_entries
 import os
 import json
 import requests
@@ -94,7 +94,10 @@ def run_module():
             elements='dict',
             options=dict(
                 secret_name=dict(type='str', required=False),
-                secret_id=dict(type='str', required=False)
+                secret_id=dict(type='str', required=False),
+                secret_path=dict(type='str', required=False),
+                secret_type=dict(type='str', required=False),
+                secret_tag=dict(type='str', required=False)
             ),
             required=False
         )
@@ -130,13 +133,28 @@ def run_module():
             for secret in secrets:
                 secret_name = secret.get('secret_name')
                 secret_id = secret.get('secret_id')
+                secret_tag = secret.get('secret_tag')
+                secret_type = secret.get('secret_type')
+                secret_path = secret.get('secret_path')
 
-                if not secret_name and not secret_id:
-                    module.fail_json(msg="Each secret must have either a secret_name or a secret_id", **result)
+                if not secret_name and not secret_id and not secret_tag and not secret_type and not secret_path:
+                    module.fail_json(msg="Each secret must have either a secret_name or a secret_id or a secret_tag or a secret_type or a secret_path", **result)
 
                 if secret_id:
                     entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
                     fetched_secrets[secret_id] = entry['data']
+                elif secret_name:
+                    entry = get_vault_entry_from_name(server_base_url, token, vault_id, secret_name)
+                    fetched_secrets[secret_name] = entry['data']
+                elif secret_tag:
+                    entry = get_vault_entry_from_tag(server_base_url, token, vault_id, secret_tag)
+                    fetched_secrets[secret_tag] = entry['data']
+                elif secret_path:
+                    entry = get_vault_entry_from_path(server_base_url, token, vault_id, secret_path)
+                    fetched_secrets[secret_path] = entry['data']
+                elif secret_type:
+                    entry = get_vault_entry_from_type(server_base_url, token, vault_id, secret_type)
+                    fetched_secrets[secret_type] = entry['data']
                 else:
                     entry = find_entry_by_name(entries, secret_name)
                     if not entry:
