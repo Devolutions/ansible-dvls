@@ -72,16 +72,10 @@ secrets:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entries, find_entry_by_name
 import os
 import json
 import requests
-
-def find_entry_by_name(entries, name):
-    for entry in entries:
-        if entry.get('name') == name:
-            return entry
-    return None
 
 def run_module():
     module_args = dict(
