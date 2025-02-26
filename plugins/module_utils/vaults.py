@@ -34,7 +34,7 @@ def get_vault_entry(server_base_url, token, vault_id, entry_id):
         return response.json()
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
-    
+
 def get_vault_entry_from_name(server_base_url, token, vault_id, entry_name):
     vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
     vault_headers = {

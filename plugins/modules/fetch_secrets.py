@@ -72,6 +72,7 @@ secrets:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.utils import get_sensible_value
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults, get_vault_entry, get_vault_entry_from_name, get_vault_entry_from_tag, get_vault_entry_from_type, get_vault_entry_from_path, get_vault_entries
 import os
 import json
@@ -144,29 +145,20 @@ def run_module():
                     entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
                     fetched_secrets[secret_id] = entry['data']
                 elif secret_name:
-                    entry = get_vault_entry_from_name(server_base_url, token, vault_id, secret_name)
-                    fetched_secrets[secret_name] = entry['data']
+                    entries = get_vault_entry_from_name(server_base_url, token, vault_id, secret_name)
+                    name_results = get_sensible_value(server_base_url, token, vault_id, entries)
+                    fetched_secrets.update(name_results)
                 elif secret_tag:
-                    entry = get_vault_entry_from_tag(server_base_url, token, vault_id, secret_tag)
-                    fetched_secrets[secret_tag] = entry['data']
+                    entries = get_vault_entry_from_tag(server_base_url, token, vault_id, secret_tag)
+                    fetched_secrets = get_sensible_value(server_base_url, token, vault_id, entries)
                 elif secret_path:
-                    entry = get_vault_entry_from_path(server_base_url, token, vault_id, secret_path)
-                    fetched_secrets[secret_path] = entry['data']
+                    entries = get_vault_entry_from_path(server_base_url, token, vault_id, secret_path)
+                    fetched_secrets = get_sensible_value(server_base_url, token, vault_id, entries)
                 elif secret_type:
-                    entry = get_vault_entry_from_type(server_base_url, token, vault_id, secret_type)
-                    fetched_secrets[secret_type] = entry['data']
-                else:
-                    entry = find_entry_by_name(entries, secret_name)
-                    if not entry:
-                        module.fail_json(msg=f"Secret '{secret_name}' not found", **result)
-                    secret_id = entry['id']
-                    entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
-                    fetched_secrets[secret_name] = entry['data']
+                    entries = get_vault_entry_from_type(server_base_url, token, vault_id, secret_type)
+                    fetched_secrets = get_sensible_value(server_base_url, token, vault_id, entries)
         else:
-            for secret in entries:
-                entry_name = secret['name']
-                entry = get_vault_entry(server_base_url, token, vault_id, secret['id'])
-                fetched_secrets[entry_name] = entry['data']
+            fetched_secrets = get_sensible_value(server_base_url, token, vault_id, entries)
 
         result = fetched_secrets
 
