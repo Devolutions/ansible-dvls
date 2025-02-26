@@ -114,3 +114,9 @@ def get_vault_entries(server_base_url, token, vault_id):
         return json_data.get('data', [])
     except Exception as e:
         raise Exception(f"An error occurred while getting vault entries: {e}")
+
+def find_entry_by_name(entries, name):
+    for entry in entries:
+        if entry.get('name') == name:
+            return entry
+    return None

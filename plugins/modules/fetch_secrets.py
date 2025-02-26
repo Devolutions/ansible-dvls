@@ -78,12 +78,6 @@ import os
 import json
 import requests
 
-def find_entry_by_name(entries, name):
-    for entry in entries:
-        if entry.get('name') == name:
-            return entry
-    return None
-
 def run_module():
     module_args = dict(
         server_base_url=dict(type='str', required=True),
