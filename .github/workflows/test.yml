@@ -1,0 +1,22 @@
+name: Test module
+
+on:
+  pull_request:
+    branches: master
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: ansible-galaxy collection build
+
+      - name: Update depencencies
+        run: ansible-galaxy collection install ../ansible-dvls/devolutions-dvls-1.1.1.tar.gz --force
+
+      - name: Run test
+        run: ansible test integration
