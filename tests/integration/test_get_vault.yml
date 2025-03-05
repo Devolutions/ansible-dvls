@@ -1,0 +1,10 @@
+---
+- name: Fetch DVLS
+  hosts: localhost
+  tasks:
+    - name: Fetch dvls server
+      devolutions.dvls.fetch_server:
+        server_base_url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}"
+        app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+        app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+      register: server
