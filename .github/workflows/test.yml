@@ -1,0 +1,67 @@
+name: Test module
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: master
+
+jobs:
+  integration-test:
+    environment: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: Install Python dependencies
+        run: |
+          pip install ansible
+          pip install requests
+          python -m pip install --upgrade pip
+          pip list
+
+      - name: Build
+        id: build
+        run: |
+          OUTPUT=$(ansible-galaxy collection build)
+          echo "$OUTPUT"
+          COLLECTION_PATH=$(echo "$OUTPUT" | grep -o '/[^ ]*\.tar\.gz')
+          echo "collection_path=$COLLECTION_PATH" >> $GITHUB_OUTPUT
+          echo "Collection path: $COLLECTION_PATH"
+
+      - name: Install collection
+        run: ansible-galaxy collection install ${{ steps.build.outputs.collection_path }} --force
+        working-directory: tests/integration
+
+      - name: Run get-vaults
+        run: ansible-playbook test_get_vault.yml
+        working-directory: tests/integration
+        env:
+          DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
+          DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
+          DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
+          DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}
+
+      - name: Run get-secrets
+        run: ansible-playbook test_get_secret.yml
+        working-directory: tests/integration
+        env:
+          DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
+          DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
+          DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
+          DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}
+
+      - name: Run create-secrets
+        run: ansible-playbook test_create_secret.yml
+        working-directory: tests/integration
+        env:
+          DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
+          DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
+          DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
+          DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}
