@@ -1,0 +1,15 @@
+# ansible-galaxy build
+*.tar.gz
+.lock
+
+# vscode..
+.vscode
+
+# macosx...
+.DS_Store
+
+# python envs
+.env
+.venv
+env
+venv
