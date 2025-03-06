@@ -8,3 +8,7 @@
         app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
         app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
       register: server
+
+    - name: Check server version
+      ansible.builtin.debug:
+        var: server.version

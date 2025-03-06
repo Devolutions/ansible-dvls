@@ -16,4 +16,4 @@ repository: https://github.com/Devolutions/ansible-dvls
 documentation: https://github.com/Devolutions/ansible-dvls
 homepage: https://github.com/Devolutions/ansible-dvls
 issues: https://github.com/Devolutions/ansible-dvls/issues
-build_ignore: [.github, requirements.txt]
+build_ignore: [.github, requirements.txt, tests]
