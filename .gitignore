@@ -1,6 +1,7 @@
 # ansible-galaxy build
 *.tar.gz
 .lock
+.ansible
 
 # vscode..
 .vscode

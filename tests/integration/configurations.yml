@@ -1,0 +1,2 @@
+configs:
+  - secret_name: "fetch-secret-from-file"
