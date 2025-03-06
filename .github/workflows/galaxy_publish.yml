@@ -26,8 +26,8 @@ jobs:
           echo "Collection path: $COLLECTION_PATH"
           echo "Collection version: $VERSION"
 
-      # - name: Publish to Ansible Galaxy
-      #   run: ansible-galaxy collection publish ${{ steps.build.outputs.collection_path }} --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
+      - name: Publish to Ansible Galaxy
+        run: ansible-galaxy collection publish ${{ steps.build.outputs.collection_path }} --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.3.6
