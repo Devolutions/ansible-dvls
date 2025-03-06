@@ -45,15 +45,15 @@ Use the following playbook to authenticate with DVLS and fetch the secrets defin
         app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
         vault_id: "00000000-0000-0000-0000-000000000000"
         secrets: "{{ secrets }}"
-      register: secrets
+      register: value
 
     - name: Dump secrets
       debug:
-        msg: "{{ secrets }}"
+        msg: "{{ value }}"
 
     - name: Dump a secret
       debug:
-        msg: "{{ secrets['name-or-id'].value }}"
+        msg: "{{ value['name-or-id'].value }}"
 ```
 
 ## Usage fetching all secrets
@@ -69,15 +69,15 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
         app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
         app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
         vault_id: "00000000-0000-0000-0000-000000000000"
-      register: secrets
+      register: value
 
     - name: Dump secrets
       debug:
-        msg: "{{ secrets }}"
+        msg: "{{ value }}"
 
     - name: Dump a secret
       debug:
-        msg: "{{ secrets['name-or-id'].value }}"
+        msg: "{{ value['name-or-id'].value }}"
 ```
 
 ## Usage fetching server info and vaults list
@@ -89,15 +89,15 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
-  register: server
+  register: value
 
 - name: Fetch URI
   debug:
-    msg: "{{ server.accessURI }}"
+    msg: "{{ value.accessURI }}"
 
 - name: Fetch a vault from the list
   debug:
-    msg: "{{ server.vaults[1].id }}"
+    msg: "{{ value.vaults[1].id }}"
 ```
 
 Example response
@@ -163,7 +163,6 @@ When a new secret was created or updated, the module will return the entry ID.
     secret:
       secret_name: "my_secret_1"
       value: "p@ssw0rd1"
-  register: secrets
 ```
 
 Example with additional available options (Currently only the "Credential" type and "Default" subtype are supported):
@@ -182,5 +181,4 @@ Example with additional available options (Currently only the "Credential" type 
       secret_type: "Credentials"
       secret_subtype: "Default"
       secret_description: "a description for the secret"
-  register: secrets
 ```

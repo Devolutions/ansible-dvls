@@ -1,27 +1,61 @@
 name: Publish to Ansible Galaxy
 
 on:
-  release:
-    types: published
   workflow_dispatch:
 
 jobs:
   publish:
     environment: publish
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Build
-        run: ansible-galaxy collection build
+        id: build
+        run: |
+          OUTPUT=$(ansible-galaxy collection build)
+          echo "$OUTPUT"
+          COLLECTION_PATH=$(echo "$OUTPUT" | grep -o '/[^ ]*\.tar\.gz')
+          VERSION=$(echo "$COLLECTION_PATH" | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//')
+          echo "collection_path=$COLLECTION_PATH" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Collection path: $COLLECTION_PATH"
+          echo "Collection version: $VERSION"
 
-      - name: Publish to Ansible Galaxy
-        run: ansible-galaxy collection publish *.tar.gz --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
+      # - name: Publish to Ansible Galaxy
+      #   run: ansible-galaxy collection publish ${{ steps.build.outputs.collection_path }} --api-key ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.3.6
         with:
           name: ansible-dvls-collection
-          path: '*.tar.gz'
+          path: ${{ steps.build.outputs.collection_path }}
+
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # fetch all tags for the set version step
+
+      - name: Check out Devolutions/actions
+        uses: actions/checkout@v4
+        with:
+          repository: Devolutions/actions
+          ref: v1
+          token: ${{ secrets.DEVOLUTIONSBOT_TOKEN }}
+          path: ./.github/workflows
+
+      - name: Create release
+        uses: ./.github/workflows/create-release
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ needs.publish.outputs.version }}
