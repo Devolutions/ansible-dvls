@@ -1,5 +1,4 @@
 import requests
-import json
 
 def public_instance_information(server_base_url, token):
     url = f"{server_base_url}/api/public-instance-information"

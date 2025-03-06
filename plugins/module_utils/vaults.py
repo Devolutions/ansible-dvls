@@ -1,5 +1,4 @@
 import requests
-import json
 
 def get_vaults(server_base_url, token):
     vaults_url = f"{server_base_url}/api/v1/vault"
