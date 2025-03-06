@@ -1,9 +1,11 @@
-name: Test module
+name: Test modules
 
 on:
   workflow_dispatch:
+  push: # test
   pull_request:
-    branches: master
+    branches:
+      - master
 
 jobs:
   integration-test:
@@ -21,10 +23,9 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install ansible
-          pip install requests
-          python -m pip install --upgrade pip
-          pip list
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          python3 -m pip list
 
       - name: Build
         id: build
