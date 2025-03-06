@@ -1,6 +1,4 @@
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vault_entry
-import requests
-import json
 
 def get_sensible_value(server_base_url, token, vault_id, entries):
     fetched_secrets = {}

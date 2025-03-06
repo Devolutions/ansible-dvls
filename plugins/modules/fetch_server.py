@@ -1,9 +1,19 @@
 #!/usr/bin/python
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
+from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
+    public_instance_information,
+    private_instance_information,
+)
+
+
+DOCUMENTATION = r"""
 ---
 module: fetch_server
 
@@ -29,52 +39,42 @@ options:
 
 author:
     - Danny Bédard (@DannyBedard)
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Fetch dvls server information
     server:
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
     register: server
-'''
+"""
 
-RETURN = r'''
+RETURN = r"""
 secrets:
     description: The server vaults and information.
     type: dict
     returned: always
-'''
+"""
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
-from ansible_collections.devolutions.dvls.plugins.module_utils.server import public_instance_information, private_instance_information
-import os
-import json
-import requests
 
 def run_module():
     module_args = dict(
-        server_base_url=dict(type='str', required=True),
-        app_key=dict(type='str', required=True),
-        app_secret=dict(type='str', required=True),
+        server_base_url=dict(type="str", required=True),
+        app_key=dict(type="str", required=True),
+        app_secret=dict(type="str", required=True),
     )
 
     result = dict()
 
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
 
     if module.check_mode:
         module.exit_json(**result)
 
-    server_base_url = module.params['server_base_url']
-    app_key = module.params['app_key']
-    app_secret = module.params['app_secret']
+    server_base_url = module.params["server_base_url"]
+    app_key = module.params["app_key"]
+    app_secret = module.params["app_secret"]
 
     try:
         token = login(server_base_url, app_key, app_secret)
@@ -83,18 +83,18 @@ def run_module():
         public_info = public_instance_information(server_base_url, token)
         private_info = private_instance_information(server_base_url, token)
 
-        if 'expirationDate' not in public_info['data']:
+        if "expirationDate" not in public_info["data"]:
             raise KeyError("expirationDate missing from fetched server")
-        if 'version' not in public_info['data']:
+        if "version" not in public_info["data"]:
             raise KeyError("version missing from fetched server']")
-        if 'accessURI' not in private_info['data']:
+        if "accessURI" not in private_info["data"]:
             raise KeyError("accessURI missing from fetched server")
 
         result = {
-            'expirationDate': public_info['data'].get('expirationDate'),
-            'version': public_info['data'].get('version'),
-            'accessURI': private_info['data'].get('accessURI'),
-            'vaults': vaults
+            "expirationDate": public_info["data"].get("expirationDate"),
+            "version": public_info["data"].get("version"),
+            "accessURI": private_info["data"].get("accessURI"),
+            "vaults": vaults,
         }
 
     except KeyError as ke:
@@ -106,8 +106,10 @@ def run_module():
 
     module.exit_json(**result)
 
+
 def main():
     run_module()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
