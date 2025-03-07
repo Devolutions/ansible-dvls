@@ -1,24 +1,5 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.utils import (
-    get_sensible_value,
-)
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
-    get_vault_entry,
-    get_vault_entry_from_name,
-    get_vault_entry_from_tag,
-    get_vault_entry_from_type,
-    get_vault_entry_from_path,
-    get_vault_entries,
-)
-
-
 DOCUMENTATION = r"""
 ---
 module: fetch_secrets
@@ -85,6 +66,20 @@ secrets:
     type: dict
     returned: always
 """
+
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.utils import (
+    get_sensible_value,
+)
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
+    get_vault_entry,
+    get_vault_entry_from_name,
+    get_vault_entry_from_tag,
+    get_vault_entry_from_type,
+    get_vault_entry_from_path,
+    get_vault_entries,
+)
 
 
 def run_module():

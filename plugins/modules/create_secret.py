@@ -1,17 +1,5 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
-    get_vault_entries,
-    find_entry_by_name,
-)
-import requests
-
 DOCUMENTATION = r"""
 ---
 module: create_secret
@@ -95,6 +83,14 @@ id:
     type: dict
     returned: changed
 """
+
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
+    get_vault_entries,
+    find_entry_by_name,
+)
+import requests
 
 
 def run_module():
