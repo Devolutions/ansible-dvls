@@ -1,18 +1,5 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
-from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
-    public_instance_information,
-    private_instance_information,
-)
-
-
 DOCUMENTATION = r"""
 ---
 module: fetch_server
@@ -56,6 +43,14 @@ secrets:
     type: dict
     returned: always
 """
+
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
+from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
+    public_instance_information,
+    private_instance_information,
+)
 
 
 def run_module():
