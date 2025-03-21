@@ -1,4 +1,13 @@
-import requests
+import traceback
+
+try:
+    import requests
+except ImportError:
+    HAS_REQUESTS_LIBRARY = False
+    REQUESTS_LIBRARY_IMPORT_ERROR = traceback.format_exc()
+else:
+    HAS_REQUESTS_LIBRARY_LIBRARY = True
+    REQUESTS_LIBRARY_IMPORT_ERROR = None
 
 
 def get_vaults(server_base_url, token):

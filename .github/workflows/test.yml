@@ -10,15 +10,20 @@ jobs:
   integration-test:
     environment: test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible/ansible_collections/devolutions/dvls
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          path: ansible/ansible_collections/devolutions/dvls
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: 3.13
 
       - name: Install Python dependencies
         run: |
@@ -26,7 +31,10 @@ jobs:
           python3 -m pip install -r requirements.txt
           python3 -m pip list
 
-      - name: Build
+      - name: Test code sanity
+        run: ansible-test sanity
+
+      - name: Build collection
         id: build
         run: |
           OUTPUT=$(ansible-galaxy collection build)
@@ -37,11 +45,30 @@ jobs:
 
       - name: Install collection
         run: ansible-galaxy collection install ${{ steps.build.outputs.collection_path }} --force
-        working-directory: tests/integration
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
+
+      - name: Test collection documentation
+        run: |
+          # Generate the list of modules dynamically
+          ansible_modules=($(ansible-doc -l devolutions.dvls | awk '{print $1}'))
+
+          # Check if any modules were found
+          if [ ${#ansible_modules[@]} -eq 0 ]; then
+            echo "Error: No modules found for devolutions.dvls."
+            exit 1
+          fi
+          echo "Modules: ${ansible_modules[@]}"
+
+          # Loop through each module and run ansible-doc
+          for ansible_module in "${ansible_modules[@]}"; do
+            echo "Running ansible-doc for module: $ansible_module"
+            ansible-doc -t module "$ansible_module"
+            echo "----------------------------------------------------"
+          done
 
       - name: Run get-vaults
         run: ansible-playbook test_manage_server.yml
-        working-directory: tests/integration
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
         env:
           DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
           DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
@@ -50,7 +77,7 @@ jobs:
 
       - name: Run get-secrets
         run: ansible-playbook test_manage_secrets.yml
-        working-directory: tests/integration
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
         env:
           DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
           DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}

@@ -7,8 +7,8 @@ module: fetch_server
 short_description: Fetch server from DVLS
 
 description:
-    - This module logs into the DVLS (Devolutions Server) service, retrieves server information and vaults list.
-    - The module requires DVLS application credentials and a server base URL.
+    - Logs into the DVLS (Devolutions Server) service, retrieves server information and vaults list.
+    - Requires DVLS application credentials and a server base URL.
 
 options:
     server_base_url:
@@ -30,11 +30,11 @@ author:
 
 EXAMPLES = r"""
 - name: Fetch dvls server information
-    server:
+  devolutions.dvls.fetch_server:
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
-    register: server
+  register: server
 """
 
 RETURN = r"""
@@ -56,8 +56,8 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
 def run_module():
     module_args = dict(
         server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True),
-        app_secret=dict(type="str", required=True),
+        app_key=dict(type="str", required=True, no_log=True),
+        app_secret=dict(type="str", required=True, no_log=True),
     )
 
     result = dict()
