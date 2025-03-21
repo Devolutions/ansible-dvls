@@ -12,7 +12,8 @@ output
 # macosx...
 .DS_Store
 
-# python envs
+# python
+*.pyc
 .env
 .venv
 env
