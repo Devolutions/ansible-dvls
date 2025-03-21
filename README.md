@@ -107,7 +107,6 @@ Example response
     "server": {
         "accessURI": "https://example.dvls-server.com/",
         "changed": false,
-        "expirationDate": "2030-12-31T23:59:59",
         "failed": false,
         "vaults": [
             {

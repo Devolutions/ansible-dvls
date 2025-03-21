@@ -78,15 +78,12 @@ def run_module():
         public_info = public_instance_information(server_base_url, token)
         private_info = private_instance_information(server_base_url, token)
 
-        if "expirationDate" not in public_info["data"]:
-            raise KeyError("expirationDate missing from fetched server")
         if "version" not in public_info["data"]:
             raise KeyError("version missing from fetched server']")
         if "accessURI" not in private_info["data"]:
             raise KeyError("accessURI missing from fetched server")
 
         result = {
-            "expirationDate": public_info["data"].get("expirationDate"),
             "version": public_info["data"].get("version"),
             "accessURI": private_info["data"].get("accessURI"),
             "vaults": vaults,
