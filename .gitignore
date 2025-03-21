@@ -3,13 +3,17 @@
 .lock
 .ansible
 
+# asnible-test
+output
+
 # vscode..
 .vscode
 
 # macosx...
 .DS_Store
 
-# python envs
+# python
+*.pyc
 .env
 .venv
 env

@@ -1,18 +1,5 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
-from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
-from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
-    public_instance_information,
-    private_instance_information,
-)
-
-
 DOCUMENTATION = r"""
 ---
 module: fetch_server
@@ -20,8 +7,8 @@ module: fetch_server
 short_description: Fetch server from DVLS
 
 description:
-    - This module logs into the DVLS (Devolutions Server) service, retrieves server information and vaults list.
-    - The module requires DVLS application credentials and a server base URL.
+    - Logs into the DVLS (Devolutions Server) service, retrieves server information and vaults list.
+    - Requires DVLS application credentials and a server base URL.
 
 options:
     server_base_url:
@@ -43,11 +30,11 @@ author:
 
 EXAMPLES = r"""
 - name: Fetch dvls server information
-    server:
+  devolutions.dvls.fetch_server:
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
-    register: server
+  register: server
 """
 
 RETURN = r"""
@@ -57,12 +44,20 @@ secrets:
     returned: always
 """
 
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
+from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
+    public_instance_information,
+    private_instance_information,
+)
+
 
 def run_module():
     module_args = dict(
         server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True),
-        app_secret=dict(type="str", required=True),
+        app_key=dict(type="str", required=True, no_log=True),
+        app_secret=dict(type="str", required=True, no_log=True),
     )
 
     result = dict()
@@ -83,15 +78,12 @@ def run_module():
         public_info = public_instance_information(server_base_url, token)
         private_info = private_instance_information(server_base_url, token)
 
-        if "expirationDate" not in public_info["data"]:
-            raise KeyError("expirationDate missing from fetched server")
         if "version" not in public_info["data"]:
             raise KeyError("version missing from fetched server']")
         if "accessURI" not in private_info["data"]:
             raise KeyError("accessURI missing from fetched server")
 
         result = {
-            "expirationDate": public_info["data"].get("expirationDate"),
             "version": public_info["data"].get("version"),
             "accessURI": private_info["data"].get("accessURI"),
             "vaults": vaults,

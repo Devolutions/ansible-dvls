@@ -1,0 +1,3 @@
+plugins/modules/fetch_secrets.py validate-modules:missing-gplv3-license # ignore license check
+plugins/modules/create_secret.py validate-modules:missing-gplv3-license # ignore license check
+plugins/modules/fetch_server.py validate-modules:missing-gplv3-license # ignore license check

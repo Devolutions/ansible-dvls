@@ -8,7 +8,7 @@ This Ansible module allows you to authenticate with DVLS and fetch server inform
 - Flexible support for static secrets or fetching all secrets in a vault.
 
 ## Requirements
-- Ansible
+- Ansible 2.18
 - Python `requests` library
 - A DVLS application identity (create at `{your-dvls-url}/administration/applications`).
   - The application must have permissions to fetch the desired secrets.
@@ -107,7 +107,6 @@ Example response
     "server": {
         "accessURI": "https://example.dvls-server.com/",
         "changed": false,
-        "expirationDate": "2030-12-31T23:59:59",
         "failed": false,
         "vaults": [
             {
@@ -129,16 +128,16 @@ Example response
 
 ## Secrets definition
 
-To access a particular field within a secret, you can use the format ```{{ secrets['name-or-id'].value }}```. Here’s a breakdown of the available categories and their fields:
+To access a particular field within a secret, you can use the format ```{{ secrets['name-or-id'].value }}```. Here's a breakdown of the available categories and their fields:
 
-| **Category**              | **Fields**                                                                 |
-|---------------------------|---------------------------------------------------------------------------|
-| Username and password     | `domain`, `password`, `username`                                          |
-| Connection string         | `connectionString`                                                       |
-| Secret                    | `password`                                                               |
-| API key                   | `apiId`, `apiKey`, `tenantId`                                            |
+| **Category**              | **Fields**                                                                                                                |
+|---------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Username and password     | `domain`, `password`, `username`                                                                                          |
+| Connection string         | `connectionString`                                                                                                        |
+| Secret                    | `password`                                                                                                                |
+| API key                   | `apiId`, `apiKey`, `tenantId`                                                                                             |
 | SSH key                   | `domain`, `password`, `privateKeyData`, `privateKeyOverridePassword`, `privateKeyPassPhrase`, `publicKeyData`, `username` |
-| Azure service principal   | `clientId`, `clientSecret`, `tenantId`                                   |
+| Azure service principal   | `clientId`, `clientSecret`, `tenantId`                                                                                    |
 
 
 ### Example using secret value
