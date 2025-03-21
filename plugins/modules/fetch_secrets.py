@@ -7,8 +7,8 @@ module: fetch_secrets
 short_description: Fetch secrets from DVLS
 
 description:
-    - This module logs into the DVLS (Devolutions Server) service, retrieves specified secrets from a specified vault by name or ID.
-    - The module requires DVLS application credentials, a server base URL, and either a secret name or ID.
+    - Logs into the DVLS (Devolutions Server) service, retrieves specified secrets from a specified vault by name or ID.
+    - Requires DVLS application credentials, a server base URL, and either a secret name or ID.
 
 options:
     server_base_url:
@@ -29,7 +29,6 @@ options:
         type: str
     secrets:
         description: A list of secrets to fetch. Each secret can be specified by name or ID.
-        required: true
         type: list
         elements: dict
         suboptions:
@@ -39,6 +38,18 @@ options:
                 type: str
             secret_id:
                 description: The ID of the secret to fetch.
+                required: false
+                type: str
+            secret_path:
+                description: The path of the secret to fetch.
+                required: false
+                type: str
+            secret_type:
+                description: The type of the secret to fetch.
+                required: false
+                type: str
+            secret_tag:
+                description: The tag of the secret to fetch.
                 required: false
                 type: str
 
@@ -85,20 +96,21 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
 def run_module():
     module_args = dict(
         server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True),
-        app_secret=dict(type="str", required=True),
+        app_key=dict(type="str", required=True, no_log=True),
+        app_secret=dict(type="str", required=True, no_log=True),
         vault_id=dict(type="str", required=True),
         secrets=dict(
             type="list",
             elements="dict",
             options=dict(
-                secret_name=dict(type="str", required=False),
-                secret_id=dict(type="str", required=False),
-                secret_path=dict(type="str", required=False),
-                secret_type=dict(type="str", required=False),
-                secret_tag=dict(type="str", required=False),
+                secret_name=dict(type="str", required=False, no_log=False),
+                secret_id=dict(type="str", required=False, no_log=False),
+                secret_path=dict(type="str", required=False, no_log=False),
+                secret_type=dict(type="str", required=False, no_log=False),
+                secret_tag=dict(type="str", required=False, no_log=False),
             ),
             required=False,
+            no_log=False,
         ),
     )
 

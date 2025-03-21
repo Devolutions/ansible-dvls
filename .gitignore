@@ -3,6 +3,9 @@
 .lock
 .ansible
 
+# asnible-test
+output
+
 # vscode..
 .vscode
 

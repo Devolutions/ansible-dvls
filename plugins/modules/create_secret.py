@@ -7,8 +7,8 @@ module: create_secret
 short_description: create or update a credential to DVLS
 
 description:
-    - This module logs into the DVLS (Devolutions Server) service, checks if a entry inside a given path already exists and updates or creates a Credential by name.
-    - The module requires DVLS application credentials, a server base URL and the data needed to create a secret.
+    - Logs into the DVLS (Devolutions Server) service, checks if an entry exists at a given path, and updates or creates a Credential by name.
+    - Requires DVLS application credentials, a server base URL and the data needed to create a secret.
 
 options:
     server_base_url:
@@ -30,8 +30,7 @@ options:
     secret:
         description: the credential object, containing username and password.
         required: true
-        type: list
-        elements: dict
+        type: dict
         suboptions:
             secret_name:
                 description: the entry name/username.
@@ -49,7 +48,7 @@ options:
                 description: the type of secret that will get created.
                 required: false
                 type: str
-                default: Credentials
+                default: Credential
             secret_subtype:
                 description: the secret subtype.
                 required: false
@@ -65,7 +64,7 @@ author:
 """
 
 EXAMPLES = r"""
-- name: Upload Credentials to DVLS
+- name: Upload Credential to DVLS
   devolutions.dvls.create_secret:
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
@@ -82,40 +81,62 @@ id:
     description: returns the ID of the created/updated entry.
     type: dict
     returned: changed
+
 """
 
-from ansible.module_utils.basic import AnsibleModule
+import traceback
+
+from ansible.module_utils.basic import AnsibleModule, missing_required_lib
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
     get_vault_entries,
     find_entry_by_name,
 )
-import requests
+
+try:
+    import requests
+except ImportError:
+    HAS_REQUESTS_LIBRARY = False
+    REQUESTS_LIBRARY_IMPORT_ERROR = traceback.format_exc()
+else:
+    HAS_REQUESTS_LIBRARY = True
+    REQUESTS_LIBRARY_IMPORT_ERROR = None
 
 
 def run_module():
-    module_args = dict(
+    argument_spec = dict(
         server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True),
-        app_secret=dict(type="str", required=True),
+        app_key=dict(type="str", required=True, no_log=True),
+        app_secret=dict(type="str", required=True, no_log=True),
         vault_id=dict(type="str", required=True),
         secret=dict(
             type="dict",
             options=dict(
-                secret_name=dict(type="str", required=True),
-                value=dict(type="str", required=True),
-                secret_path=dict(type="str", required=False),
-                secret_type=dict(type="str", required=False, default="Credential"),
-                secret_subtype=dict(type="str", required=False, default="Default"),
-                secret_description=dict(type="str", required=False),
+                secret_name=dict(type="str", required=True, no_log=False),
+                value=dict(type="str", required=True, no_log=True),
+                secret_path=dict(type="str", required=False, no_log=False),
+                secret_type=dict(
+                    type="str", required=False, default="Credential", no_log=False
+                ),
+                secret_subtype=dict(
+                    type="str", required=False, default="Default", no_log=False
+                ),
+                secret_description=dict(type="str", required=False, no_log=False),
             ),
             required=True,
+            no_log=False,
         ),
     )
 
     result = dict()
 
-    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
+    module = AnsibleModule(argument_spec=argument_spec, supports_check_mode=True)
+
+    if not HAS_REQUESTS_LIBRARY:
+        module.fail_json(
+            msg=missing_required_lib("requests"),
+            exception=REQUESTS_LIBRARY_IMPORT_ERROR,
+        )
 
     if module.check_mode:
         module.exit_json(**result)
