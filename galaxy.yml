@@ -1,6 +1,6 @@
 namespace: devolutions
 name: dvls
-version: 1.2.2
+version: 1.2.3
 readme: README.md
 authors:
 - Danny Bédard <devops@devolutions.net>

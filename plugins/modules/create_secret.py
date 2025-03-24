@@ -150,8 +150,12 @@ def run_module():
     password = secret.get("value")
     secret_type = secret.get("secret_type")
     secret_subtype = secret.get("secret_subtype")
-    secret_path = secret.get("secret_path")
     description = secret.get("secret_description")
+
+    if secret.get("secret_path") is None:
+        secret_path = ""
+    else:
+        secret_path = secret.get("secret_path")
 
     vault_id = module.params.get("vault_id")
 
@@ -178,7 +182,7 @@ def run_module():
         )
 
         # when an existing entry is found, it gets updated. Otherwise a new entry gets created
-        entry = find_entry_by_name(path_entries, secret_name)
+        entry = find_entry_by_name(path_entries, secret_name, secret_path)
         if entry:
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry['id']}"
             response = requests.put(vault_url, headers=vault_headers, json=vault_body)
