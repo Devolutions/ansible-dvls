@@ -1,0 +1,50 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug - fetch_server.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/debug_fetch_server.py",
+            "console": "integratedTerminal",
+            "env": {
+                "DVLS_SERVER_BASE_URL": "<url>",
+                "DVLS_APP_KEY": "<app-key>",
+                "DVLS_APP_SECRET": "<app-secret>",
+                "DVLS_VAULT_ID": "<vault-id>",
+                "PYTHONPATH": "/Users/<user>/dev/git/ansible"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Debug - fetch_secrets.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/debug_fetch_secrets.py",
+            "console": "integratedTerminal",
+            "env": {
+                "DVLS_SERVER_BASE_URL": "<url>",
+                "DVLS_APP_KEY": "<app-key>",
+                "DVLS_APP_SECRET": "<app-secret>",
+                "DVLS_VAULT_ID": "<vault-id>",
+                "PYTHONPATH": "/Users/<user>/dev/git/ansible"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Debug - create_secrets.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/debug_create_secrets.py",
+            "console": "integratedTerminal",
+            "env": {
+                "DVLS_SERVER_BASE_URL": "<url>",
+                "DVLS_APP_KEY": "<app-key>",
+                "DVLS_APP_SECRET": "<app-secret>",
+                "DVLS_VAULT_ID": "<vault-id>",
+                "PYTHONPATH": "/Users/<user>/dev/git/ansible"
+            },
+            "justMyCode": false
+        }
+    ]
+}
