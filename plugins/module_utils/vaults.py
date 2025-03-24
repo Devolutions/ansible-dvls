@@ -117,8 +117,8 @@ def get_vault_entries(server_base_url, token, vault_id):
         raise Exception(f"An error occurred while getting vault entries: {e}")
 
 
-def find_entry_by_name(entries, name):
+def find_entry_by_name(entries, name, path=""):
     for entry in entries:
-        if entry.get("name") == name:
+        if entry.get("name") == name and entry.get("path") == path:
             return entry
     return None
