@@ -94,7 +94,7 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
 
 
 def run_module():
-    module_args = dict(
+    argument_spec = dict(
         server_base_url=dict(type="str", required=True),
         app_key=dict(type="str", required=True, no_log=True),
         app_secret=dict(type="str", required=True, no_log=True),
@@ -116,7 +116,7 @@ def run_module():
 
     result = dict()
 
-    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
+    module = AnsibleModule(argument_spec=argument_spec, supports_check_mode=True)
 
     if module.check_mode:
         module.exit_json(**result)
