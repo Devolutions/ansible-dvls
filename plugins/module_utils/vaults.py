@@ -103,16 +103,34 @@ def get_vault_entry_from_type(server_base_url, token, vault_id, entry_type):
 def get_vault_entries(server_base_url, token, vault_id):
     vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
+    all_entries = []
+    page = 1
+
+    response = requests
 
     try:
-        response = requests.get(vault_url, headers=vault_headers)
-        response.raise_for_status()
+        while True:
+            response = requests.get(
+                vault_url,
+                headers=vault_headers,
+                params={"pageNumber": page},
+            )
+            response.raise_for_status()
+            json_data = response.json()
+            if "data" not in json_data:
+                raise ValueError(f"'data' key missing in response: {json_data}")
+            entries = json_data.get("data", [])
+            if not entries:
+                break
 
-        json_data = response.json()
-        if "data" not in json_data:
-            raise ValueError(f"'data' key missing in response: {json_data}")
+            all_entries.extend(entries)
 
-        return json_data.get("data", [])
+            if page >= json_data.get("totalPage", 0):
+                break
+
+            page += 1
+
+        return all_entries
     except Exception as e:
         raise Exception(f"An error occurred while getting vault entries: {e}")
 
