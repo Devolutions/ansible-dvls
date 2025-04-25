@@ -23,7 +23,10 @@ def get_sensible_value(server_base_url, token, vault_id, entries):
         try:
             entry = get_vault_entry(server_base_url, token, vault_id, secret["id"])
             if isinstance(entry, dict) and "data" in entry:
-                fetched_secrets[entry_name] = entry["data"]
+                secret_data = entry["data"]
+                if isinstance(secret_data, dict):
+                    secret_data["secret_path"] = secret.get("path", "")
+                fetched_secrets[entry_name] = secret_data
         except Exception as e:
             fetched_secrets[entry_name] = {"error": str(e)}
 
