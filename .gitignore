@@ -3,8 +3,11 @@
 .lock
 .ansible
 
-# asnible-test
+# ansible-test
 output
+ansible.cfg
+ansible.log
+dev.sh
 
 # vscode..
 .vscode
