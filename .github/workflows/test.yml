@@ -8,7 +8,6 @@ on:
 
 jobs:
   integration-test:
-    environment: test
     runs-on: ubuntu-latest
     defaults:
       run:
