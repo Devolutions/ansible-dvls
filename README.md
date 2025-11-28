@@ -1,4 +1,4 @@
-# DVLS Ansible Module
+# Ansible Module for Devolutions Server
 
 This Ansible module allows you to authenticate with DVLS and fetch server information, vaults, and secrets.
 
