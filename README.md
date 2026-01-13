@@ -6,6 +6,7 @@ This Ansible module allows you to authenticate with DVLS and fetch server inform
 - Authenticate with DVLS using application identities.
 - Fetch server information, vault lists, or specific secrets.
 - Flexible support for static secrets or fetching all secrets in a vault.
+- Lookup plugins for idiomatic inline credential retrieval in playbooks and templates.
 
 ## Requirements
 - Ansible 2.18
@@ -124,6 +125,91 @@ Example response
         "version": "2025.1.0.0"
     }
 }
+```
+
+## Using Lookup Plugins
+
+The collection provides two lookup plugins for retrieving credentials directly in playbooks, templates, and variable assignments:
+
+### 1. `devolutions.dvls.secret` - Field-Specific Lookup
+
+Retrieve a single field from a credential:
+
+```yaml
+- name: Simple password lookup (default field)
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret', 'prod-database') }}"
+
+- name: Get username field
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret', 'prod-database', field='username') }}"
+
+- name: Set variables from credentials
+  set_fact:
+    db_user: "{{ lookup('devolutions.dvls.secret', 'prod-db', field='username') }}"
+    db_pass: "{{ lookup('devolutions.dvls.secret', 'prod-db', field='password') }}"
+```
+
+### 2. `devolutions.dvls.secret_full` - Full Object Lookup
+
+Retrieve the complete credential object:
+
+```yaml
+- name: Get full credential
+  set_fact:
+    db_cred: "{{ lookup('devolutions.dvls.secret_full', 'prod-database') }}"
+
+- name: Use multiple fields from credential
+  postgresql_db:
+    name: mydb
+    login_host: "{{ db_cred.domain }}"
+    login_user: "{{ db_cred.username }}"
+    login_password: "{{ db_cred.password }}"
+```
+
+### Configuration
+
+Lookup plugins use the same environment variables as the modules:
+
+```sh
+export DVLS_SERVER_BASE_URL="https://example.yourcompany.com"
+export DVLS_APP_KEY="your_app_key_here"
+export DVLS_APP_SECRET="your_app_secret_here"
+export DVLS_VAULT_ID="00000000-0000-0000-0000-000000000000"
+```
+
+You can also override these per-lookup:
+
+```yaml
+- name: Get credential from specific server
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret', 'my-cred',
+              server_base_url='https://dvls.example.com',
+              app_key='my-key',
+              app_secret='my-secret',
+              vault_id='vault-uuid',
+              field='password') }}"
+```
+
+### Supported Fields
+
+The `field` parameter in `devolutions.dvls.secret` supports:
+- `username`, `password`, `domain` (Username/Password credentials)
+- `connectionString` (Connection String)
+- `apiId`, `apiKey` (API Key)
+- `tenantId`, `clientId`, `clientSecret` (Azure Service Principal)
+- `privateKeyData`, `publicKeyData`, `privateKeyPassPhrase` (SSH Key)
+
+### Lookup by Name or UUID
+
+Both plugins support lookup by credential name or UUID:
+
+```yaml
+# By name
+lookup('devolutions.dvls.secret', 'prod-database')
+
+# By UUID
+lookup('devolutions.dvls.secret', '12345678-1234-1234-1234-123456789012')
 ```
 
 ## Secrets definition
