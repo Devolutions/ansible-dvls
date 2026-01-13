@@ -82,3 +82,12 @@ jobs:
           DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
           DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
           DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}
+
+      - name: Run lookup_plugins
+        run: ansible-playbook test_lookup_plugins.yml
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
+        env:
+          DVLS_APP_KEY: ${{ secrets.DVLS_APP_KEY }}
+          DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
+          DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
+          DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}

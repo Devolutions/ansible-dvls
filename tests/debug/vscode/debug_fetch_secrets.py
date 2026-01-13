@@ -21,4 +21,5 @@ sys.stdin = io.TextIOWrapper(io.BytesIO(input_bytes), encoding="utf-8")
 
 # Import and run your module
 from ansible_collections.devolutions.dvls.plugins.modules import fetch_secrets
+
 fetch_secrets.main()
