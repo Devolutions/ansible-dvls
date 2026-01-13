@@ -10,7 +10,7 @@ description: >
   It includes lookup plugins for idiomatic inline credential retrieval in playbooks and templates.
   It enables automation of common Devolutions Password Server tasks within Ansible workflows.
 license:
-  - MIT
+  - GPL-3.0-or-later
 tags: [dvls, secrets, devolutions, password]
 dependencies: {}
 repository: https://github.com/Devolutions/ansible-dvls
