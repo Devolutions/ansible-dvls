@@ -1,13 +1,15 @@
 namespace: devolutions
 name: dvls
-version: 1.2.4
+version: 1.3.0
 readme: README.md
 authors:
   - Danny Bédard <devops@devolutions.net>
+  - Dion Gionet Mallet <devops@devolutions.net>
 description: >
   Ansible collection for interacting with Devolutions Server (DVLS). It provides modules for authentication,
   retrieving server information and vaults, and performing create, read and update operations on secrets.
-  Enables automation of common Devolutions Password Server tasks within Ansible workflows.
+  It includes lookup plugins for idiomatic inline credential retrieval in playbooks and templates.
+  It enables automation of common Devolutions Password Server tasks within Ansible workflows.
 license:
   - MIT
 tags: [dvls, secrets, devolutions, password]

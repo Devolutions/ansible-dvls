@@ -10,7 +10,7 @@ mock_args = {
     "ANSIBLE_MODULE_ARGS": {
         "server_base_url": os.getenv("DVLS_SERVER_BASE_URL"),
         "app_key": os.getenv("DVLS_APP_KEY"),
-        "app_secret": os.getenv("DVLS_APP_SECRET")
+        "app_secret": os.getenv("DVLS_APP_SECRET"),
     }
 }
 
@@ -20,4 +20,5 @@ sys.stdin = io.TextIOWrapper(io.BytesIO(input_bytes), encoding="utf-8")
 
 # Import and run your module
 from ansible_collections.devolutions.dvls.plugins.modules import fetch_server
+
 fetch_server.main()
