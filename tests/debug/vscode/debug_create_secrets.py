@@ -12,10 +12,7 @@ mock_args = {
         "app_key": os.getenv("DVLS_APP_KEY"),
         "app_secret": os.getenv("DVLS_APP_SECRET"),
         "vault_id": os.getenv("DVLS_VAULT_ID"),
-        "secret": {
-            "secret_name": "test",
-            "value": "test"
-        }
+        "secret": {"secret_name": "test", "value": "test"},
     }
 }
 
@@ -25,4 +22,5 @@ sys.stdin = io.TextIOWrapper(io.BytesIO(input_bytes), encoding="utf-8")
 
 # Import and run your module
 from ansible_collections.devolutions.dvls.plugins.modules import create_secret
+
 create_secret.main()
