@@ -143,9 +143,14 @@ def get_vault_entry_from_path(server_base_url, token, vault_id, entry_path):
         response.raise_for_status()
 
         result = response.json()
-        return filter_folders(
+        result = filter_folders(
             result, exact_match_field="path", exact_match_value=entry_path
         )
+
+        if isinstance(result, dict) and "data" in result:
+            validate_unique_entry(result.get("data", []), f"path '{entry_path}'")
+
+        return result
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
@@ -161,9 +166,14 @@ def get_vault_entry_from_type(server_base_url, token, vault_id, entry_type):
         response.raise_for_status()
 
         result = response.json()
-        return filter_folders(
+        result = filter_folders(
             result, exact_match_field="type", exact_match_value=entry_type
         )
+
+        if isinstance(result, dict) and "data" in result:
+            validate_unique_entry(result.get("data", []), f"type '{entry_type}'")
+
+        return result
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 

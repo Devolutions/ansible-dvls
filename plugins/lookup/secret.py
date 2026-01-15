@@ -25,8 +25,9 @@ options:
     description:
       - Field name to extract from credential.
       - Supported fields depend on credential type.
-      - Common fields include username, password, domain, connectionString, apiId, apiKey, tenantId, clientId, clientSecret, privateKeyData,
-        publicKeyData, privateKeyPassPhrase.
+      - "Common fields include: username, password, domain, connectionString,"
+      - "apiId, apiKey, tenantId, clientId, clientSecret, privateKeyData,"
+      - "publicKeyData, privateKeyPassPhrase."
     type: str
     default: password
   server_base_url:
@@ -56,8 +57,6 @@ options:
 notes:
   - Requires network access to DVLS server.
   - Authentication token is cached for the duration of the playbook run.
-  - Supported fields include username, password, domain, connectionString, apiId, apiKey, tenantId, clientId, clientSecret, privateKeyData,
-    publicKeyData, privateKeyPassPhrase.
 """
 
 EXAMPLES = r"""

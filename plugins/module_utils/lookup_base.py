@@ -39,6 +39,22 @@ SUPPORTED_CREDENTIAL_FIELDS = {
     "privateKeyPassPhrase",
 }
 
+# Module-level token cache shared across all lookup plugin instances
+_token_cache = {}
+_cleanup_registered = False
+
+
+def _cleanup_tokens():
+    """Cleanup method called at interpreter exit to logout all cached tokens"""
+    global _token_cache
+    for server_url, token in _token_cache.items():
+        try:
+            logout(server_url, token)
+        except Exception:
+            # Silently ignore cleanup errors
+            pass
+    _token_cache.clear()
+
 
 class DVLSLookupHelper:
     """Helper class for DVLS lookup plugins with shared authentication and retrieval logic."""
@@ -51,20 +67,8 @@ class DVLSLookupHelper:
             display_instance: Display instance for logging
             ansible_error_class: AnsibleError class for raising exceptions
         """
-        self._token = None
-        self._server_base_url = None
-        self._cleanup_registered = False
         self._display = display_instance
         self._ansible_error = ansible_error_class
-
-    def _cleanup(self):
-        """Cleanup method called at interpreter exit"""
-        if self._token and self._server_base_url:
-            try:
-                self._display.vvv("Logging out from DVLS")
-                logout(self._server_base_url, self._token)
-            except Exception as e:
-                self._display.warning(f"Failed to logout from DVLS during cleanup: {e}")
 
     def _is_uuid(self, value):
         """Check if a string matches UUID format"""
@@ -93,18 +97,22 @@ class DVLSLookupHelper:
         }
 
     def authenticate(self, server_base_url, app_key, app_secret):
-        """Authenticate to DVLS and cache the token"""
-        if not self._token:
+        """Authenticate to DVLS and cache the token at module level"""
+        global _token_cache, _cleanup_registered
+
+        if server_base_url not in _token_cache:
             try:
                 self._display.vvv(f"Authenticating to DVLS at {server_base_url}")
-                self._token = login(server_base_url, app_key, app_secret)
-                self._server_base_url = server_base_url
+                token = login(server_base_url, app_key, app_secret)
+                _token_cache[server_base_url] = token
 
-                if not self._cleanup_registered:
-                    atexit.register(self._cleanup)
-                    self._cleanup_registered = True
+                if not _cleanup_registered:
+                    atexit.register(_cleanup_tokens)
+                    _cleanup_registered = True
             except Exception as e:
                 raise self._ansible_error(f"DVLS authentication failed: {e}") from e
+        else:
+            self._display.vvv(f"Using cached token for {server_base_url}")
 
     def get_credential(self, server_base_url, vault_id, term):
         """
@@ -118,16 +126,23 @@ class DVLSLookupHelper:
         Returns:
             dict: Complete credential object
         """
+        global _token_cache
+
         self._display.vvv(f"Looking up credential: {term}")
+        token = _token_cache.get(server_base_url)
+        if not token:
+            raise self._ansible_error(
+                "Authentication token not found. Ensure authenticate() was called first."
+            )
 
         if self._is_uuid(term):
             self._display.vvv(f"Using ID lookup for {term}")
-            response = get_vault_entry(server_base_url, self._token, vault_id, term)
+            response = get_vault_entry(server_base_url, token, vault_id, term)
             credential = response.get("data", {})
         else:
             self._display.vvv(f"Using name lookup for {term}")
             response = get_vault_entry_from_name(
-                server_base_url, self._token, vault_id, term
+                server_base_url, token, vault_id, term
             )
             entries = response.get("data", [])
             if not entries:
@@ -135,9 +150,18 @@ class DVLSLookupHelper:
                     f"Credential '{term}' not found in vault {vault_id}"
                 )
             entry_id = entries[0].get("id")
+            if not entry_id:
+                raise self._ansible_error(
+                    f"Entry for '{term}' is missing required 'id' field"
+                )
             full_response = get_vault_entry(
-                server_base_url, self._token, vault_id, entry_id
+                server_base_url, token, vault_id, entry_id
             )
             credential = full_response.get("data", {})
+
+        if not credential:
+            raise self._ansible_error(
+                f"Credential '{term}' returned empty data from vault {vault_id}"
+            )
 
         return credential
