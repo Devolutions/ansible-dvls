@@ -39,24 +39,9 @@ SUPPORTED_CREDENTIAL_FIELDS = {
     "privateKeyPassPhrase",
 }
 
-# Module-level token cache shared across all lookup plugin instances
 _token_cache = {}
 _cleanup_registered = False
-
-
-def _cleanup_tokens():
-    """Cleanup method called at interpreter exit to logout all cached tokens"""
-    global _token_cache
-    for server_url, token in _token_cache.items():
-        try:
-            logout(server_url, token)
-        except (ConnectionError, TimeoutError, OSError) as e:
-            # Log connection-related errors but continue cleanup
-            pass
-        except Exception as e:
-            # Silently ignore other cleanup errors to avoid breaking exit
-            pass
-    _token_cache.clear()
+_display = None
 
 
 class DVLSLookupHelper:
@@ -70,8 +55,24 @@ class DVLSLookupHelper:
             display_instance: Display instance for logging
             ansible_error_class: AnsibleError class for raising exceptions
         """
+        global _display
         self._display = display_instance
         self._ansible_error = ansible_error_class
+        _display = display_instance
+
+    @staticmethod
+    def _cleanup_tokens():
+        """Cleanup method called at interpreter exit to logout all cached tokens"""
+        global _token_cache
+
+        for server_url, token in _token_cache.items():
+            try:
+                logout(server_url, token)
+            except (ConnectionError, TimeoutError, OSError):
+                pass
+            except Exception as e:
+                _display.warning(f"Failed to logout from {server_url}: {e}")
+        _token_cache.clear()
 
     def _is_uuid(self, value):
         """Check if a string matches UUID format"""
@@ -110,7 +111,7 @@ class DVLSLookupHelper:
                 _token_cache[server_base_url] = token
 
                 if not _cleanup_registered:
-                    atexit.register(_cleanup_tokens)
+                    atexit.register(DVLSLookupHelper._cleanup_tokens)
                     _cleanup_registered = True
             except Exception as e:
                 raise self._ansible_error(f"DVLS authentication failed: {e}") from e
