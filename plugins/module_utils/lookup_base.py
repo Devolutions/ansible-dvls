@@ -50,8 +50,11 @@ def _cleanup_tokens():
     for server_url, token in _token_cache.items():
         try:
             logout(server_url, token)
-        except Exception:
-            # Silently ignore cleanup errors
+        except (ConnectionError, TimeoutError, OSError) as e:
+            # Log connection-related errors but continue cleanup
+            pass
+        except Exception as e:
+            # Silently ignore other cleanup errors to avoid breaking exit
             pass
     _token_cache.clear()
 
@@ -132,7 +135,8 @@ class DVLSLookupHelper:
         token = _token_cache.get(server_base_url)
         if not token:
             raise self._ansible_error(
-                "Authentication token not found. Ensure authenticate() was called first."
+                f"Authentication token not found for server '{server_base_url}'. "
+                "Ensure authenticate() was called first."
             )
 
         if self._is_uuid(term):
