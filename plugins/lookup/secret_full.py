@@ -14,12 +14,13 @@ short_description: Retrieve complete DVLS credential object
 description:
   - Fetches entire credential object from Devolutions Server (DVLS).
   - Returns same structure as fetch_secrets module.
-  - Supports lookup by credential name or UUID.
+  - Supports lookup by credential name, path, or UUID.
   - Useful when multiple fields from the same credential are needed.
 options:
   _terms:
     description:
-      - Credential identifier (name or UUID) to retrieve.
+      - Credential identifier (name, path, or UUID) to retrieve.
+      - "Path format: 'folder\\\\subfolder\\\\credential-name'"
     required: true
     type: str
   server_base_url:
@@ -53,10 +54,15 @@ notes:
 """
 
 EXAMPLES = r"""
-# Retrieve full credential object
+# Retrieve full credential object by name
 - name: Get complete database credential
   debug:
     msg: "{{ lookup('devolutions.dvls.secret_full', 'prod-database') }}"
+
+# Retrieve full credential object by path
+- name: Get credential by full path
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret_full', 'Production\\\\Database\\\\prod-db') }}"
 
 # Use multiple fields from credential
 - name: Configure database connection
@@ -70,10 +76,10 @@ EXAMPLES = r"""
     login_user: "{{ db_cred.username }}"
     login_password: "{{ db_cred.password }}"
 
-# Azure Service Principal example
-- name: Get Azure credentials
+# Azure Service Principal example with path
+- name: Get Azure credentials from specific environment
   set_fact:
-    azure_sp: "{{ lookup('devolutions.dvls.secret_full', 'azure-prod-sp') }}"
+    azure_sp: "{{ lookup('devolutions.dvls.secret_full', 'Production\\\\Azure\\\\service-principal') }}"
 
 - name: Use Azure credentials
   debug:
@@ -90,17 +96,25 @@ EXAMPLES = r"""
     dest: ~/.ssh/id_rsa
     mode: '0600'
 
-# API Key example
-- name: Get API credentials
+# API Key example with path to avoid name conflicts
+- name: Get specific API credentials
   set_fact:
-    api_cred: "{{ lookup('devolutions.dvls.secret_full', 'external-api') }}"
+    staging_api: "{{ lookup('devolutions.dvls.secret_full', 'Staging\\\\APIs\\\\external-api') }}"
+    prod_api: "{{ lookup('devolutions.dvls.secret_full', 'Production\\\\APIs\\\\external-api') }}"
 
-- name: Call API
+- name: Call staging API
+  uri:
+    url: "https://staging-api.example.com/endpoint"
+    headers:
+      X-API-ID: "{{ staging_api.apiId }}"
+      X-API-KEY: "{{ staging_api.apiKey }}"
+
+- name: Call production API
   uri:
     url: "https://api.example.com/endpoint"
     headers:
-      X-API-ID: "{{ api_cred.apiId }}"
-      X-API-KEY: "{{ api_cred.apiKey }}"
+      X-API-ID: "{{ prod_api.apiId }}"
+      X-API-KEY: "{{ prod_api.apiKey }}"
 """
 
 RETURN = r"""

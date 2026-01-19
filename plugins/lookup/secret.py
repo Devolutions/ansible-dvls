@@ -13,12 +13,13 @@ version_added: "1.3.0"
 short_description: Retrieve a specific field from a DVLS credential
 description:
   - Fetches a single field value from a Devolutions Server (DVLS) credential entry.
-  - Supports lookup by credential name or UUID.
+  - Supports lookup by credential name, path, or UUID.
   - Credentials retrieved from specified vault using application authentication.
 options:
   _terms:
     description:
-      - Credential identifier (name or UUID) to retrieve.
+      - Credential identifier (name, path, or UUID) to retrieve.
+      - "Path format: 'folder\\\\subfolder\\\\credential-name'"
     required: true
     type: str
   field:
@@ -70,6 +71,16 @@ EXAMPLES = r"""
   debug:
     msg: "{{ lookup('devolutions.dvls.secret', 'prod-database', field='username') }}"
 
+# Lookup by path
+- name: Get credential by full path
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret', 'Production\\\\Database\\\\prod-db') }}"
+
+# Lookup by path with specific field
+- name: Get username from path-specified credential
+  debug:
+    msg: "{{ lookup('devolutions.dvls.secret', 'Production\\\\Database\\\\prod-db', field='username') }}"
+
 # Lookup by UUID
 - name: Get API key by ID
   debug:
@@ -80,6 +91,12 @@ EXAMPLES = r"""
   set_fact:
     db_user: "{{ lookup('devolutions.dvls.secret', 'prod-db', field='username') }}"
     db_pass: "{{ lookup('devolutions.dvls.secret', 'prod-db', field='password') }}"
+
+# Use path to avoid name conflicts
+- name: Get specific credential when multiple have same name
+  set_fact:
+    staging_pass: "{{ lookup('devolutions.dvls.secret', 'Staging\\\\Database\\\\api-db', field='password') }}"
+    prod_pass: "{{ lookup('devolutions.dvls.secret', 'Production\\\\Database\\\\api-db', field='password') }}"
 
 # Override server configuration
 - name: Get credential from specific server

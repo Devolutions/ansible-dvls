@@ -5,6 +5,7 @@
     # Test credential that should exist in the DVLS test instance
     test_credential_name: "lookup-plugin"
     test_credential_id: "8f586548-7688-4981-8d56-09509ab68101"
+    test_credential_path: "tests\\lookup-plugin"
   tasks:
     # ========================================
     # Tests for devolutions.dvls.secret plugin
@@ -62,6 +63,48 @@
               - password_value == password_by_id
             fail_msg: "Password retrieved by UUID doesn't match password retrieved by name"
             success_msg: "UUID and name lookups return identical passwords"
+
+    - name: Test secret lookup - by path
+      block:
+        - name: Lookup password by path
+          set_fact:
+            password_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path) }}"
+
+        - name: Verify password was retrieved by path
+          ansible.builtin.assert:
+            that:
+              - password_by_path is defined
+              - password_by_path | length > 0
+            fail_msg: "Failed to retrieve password by path"
+            success_msg: "Successfully retrieved password by path"
+
+        - name: Verify path and name lookups return the same password
+          ansible.builtin.assert:
+            that:
+              - password_value == password_by_path
+            fail_msg: "Password retrieved by path doesn't match password retrieved by name"
+            success_msg: "Path and name lookups return identical passwords"
+
+    - name: Test secret lookup - by path with specific field
+      block:
+        - name: Lookup username by path
+          set_fact:
+            username_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path, field='username') }}"
+
+        - name: Verify username was retrieved by path
+          ansible.builtin.assert:
+            that:
+              - username_by_path is defined
+              - username_by_path | length > 0
+            fail_msg: "Failed to retrieve username by path"
+            success_msg: "Successfully retrieved username by path"
+
+        - name: Verify path and name lookups return the same username
+          ansible.builtin.assert:
+            that:
+              - username_value == username_by_path
+            fail_msg: "Username retrieved by path doesn't match username retrieved by name"
+            success_msg: "Path and name lookups return identical usernames for specific field"
 
     - name: Test secret lookup - domain field
       block:
@@ -152,6 +195,29 @@
             fail_msg: "Failed to retrieve full credential by UUID"
             success_msg: "Successfully retrieved full credential by UUID"
 
+    - name: Test secret_full lookup - by path
+      block:
+        - name: Lookup full credential object by path
+          set_fact:
+            full_cred_by_path: "{{ lookup('devolutions.dvls.secret_full', test_credential_path) }}"
+
+        - name: Verify full credential object was retrieved by path
+          ansible.builtin.assert:
+            that:
+              - full_cred_by_path is defined
+              - full_cred_by_path is mapping
+              - full_cred_by_path.username is defined or full_cred_by_path.password is defined
+            fail_msg: "Failed to retrieve full credential by path"
+            success_msg: "Successfully retrieved full credential by path"
+
+        - name: Verify path and name lookups return the same credential
+          ansible.builtin.assert:
+            that:
+              - full_cred.username == full_cred_by_path.username
+              - full_cred.password == full_cred_by_path.password
+            fail_msg: "Credential retrieved by path doesn't match credential retrieved by name"
+            success_msg: "Path and name lookups return identical credentials"
+
     - name: Test secret_full lookup - accessing multiple fields
       block:
         - name: Get credential and use multiple fields
@@ -208,6 +274,39 @@
             fail_msg: "Password from secret and secret_full don't match"
             success_msg: "Password values match between plugins"
 
+    - name: Compare name vs UUID vs path lookups
+      block:
+        - name: Fetch password using all three methods
+          set_fact:
+            pwd_by_name: "{{ lookup('devolutions.dvls.secret', test_credential_name) }}"
+            pwd_by_uuid: "{{ lookup('devolutions.dvls.secret', test_credential_id) }}"
+            pwd_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path) }}"
+
+        - name: Verify all three methods return the same password
+          ansible.builtin.assert:
+            that:
+              - pwd_by_name == pwd_by_uuid
+              - pwd_by_name == pwd_by_path
+              - pwd_by_uuid == pwd_by_path
+            fail_msg: "Passwords from different lookup methods don't match"
+            success_msg: "All three lookup methods (name, UUID, path) return identical results"
+
+        - name: Fetch full objects using all three methods
+          set_fact:
+            obj_by_name: "{{ lookup('devolutions.dvls.secret_full', test_credential_name) }}"
+            obj_by_uuid: "{{ lookup('devolutions.dvls.secret_full', test_credential_id) }}"
+            obj_by_path: "{{ lookup('devolutions.dvls.secret_full', test_credential_path) }}"
+
+        - name: Verify all three methods return the same credential object
+          ansible.builtin.assert:
+            that:
+              - obj_by_name.username == obj_by_uuid.username
+              - obj_by_name.username == obj_by_path.username
+              - obj_by_name.password == obj_by_uuid.password
+              - obj_by_name.password == obj_by_path.password
+            fail_msg: "Credential objects from different lookup methods don't match"
+            success_msg: "All three lookup methods return identical credential objects"
+
     - name: Summary
       ansible.builtin.debug:
         msg:
@@ -216,4 +315,5 @@
           - "=========================================="
           - "secret plugin: Retrieves specific fields"
           - "secret_full plugin: Retrieves complete objects"
-          - "Both plugins tested successfully!"
+          - "Lookup methods tested: name, UUID, and path"
+          - "All plugins and lookup methods tested successfully!"
