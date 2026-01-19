@@ -14,6 +14,8 @@ try:
     from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
         get_vault_entry,
         get_vault_entry_from_name,
+        get_vault_entry_from_path,
+        validate_unique_entry,
     )
 except ImportError:
     # Will be caught by lookup plugins
@@ -118,12 +120,12 @@ class DVLSLookupHelper:
 
     def get_credential(self, server_base_url, vault_id, term):
         """
-        Retrieve a credential from DVLS by name or UUID.
+        Retrieve a credential from DVLS by name, path, or UUID.
 
         Args:
             server_base_url: DVLS server base URL
             vault_id: Vault UUID
-            term: Credential identifier (name or UUID)
+            term: Credential identifier (name, path, or UUID)
 
         Returns:
             dict: Complete credential object
@@ -140,6 +142,26 @@ class DVLSLookupHelper:
             self._display.vvv(f"Using ID lookup for {term}")
             response = get_vault_entry(server_base_url, token, vault_id, term)
             credential = response.get("data", {})
+        elif "\\" in term:
+            self._display.vvv(f"Using path lookup for {term}")
+            response = get_vault_entry_from_path(
+                server_base_url, token, vault_id, term
+            )
+            entries = response.get("data", [])
+            if not entries:
+                raise self._ansible_error(
+                    f"Credential at path '{term}' not found in vault {vault_id}"
+                )
+            validate_unique_entry(entries, f"path '{term}'")
+            entry_id = entries[0].get("id")
+            if not entry_id:
+                raise self._ansible_error(
+                    f"Entry at path '{term}' is missing required 'id' field"
+                )
+            full_response = get_vault_entry(
+                server_base_url, token, vault_id, entry_id
+            )
+            credential = full_response.get("data", {})
         else:
             self._display.vvv(f"Using name lookup for {term}")
             response = get_vault_entry_from_name(
@@ -150,6 +172,7 @@ class DVLSLookupHelper:
                 raise self._ansible_error(
                     f"Credential '{term}' not found in vault {vault_id}"
                 )
+            validate_unique_entry(entries, f"name '{term}'")
             entry_id = entries[0].get("id")
             if not entry_id:
                 raise self._ansible_error(
