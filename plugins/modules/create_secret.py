@@ -107,6 +107,15 @@ else:
     REQUESTS_LIBRARY_IMPORT_ERROR = None
 
 
+def raise_for_dvls_error(response):
+    if response.ok:
+        return
+
+    raise Exception(
+        f"{response.status_code} {response.reason} from {response.url}: {response.text[:500]}"
+    )
+
+
 def run_module():
     argument_spec = dict(
         server_base_url=dict(type="str", required=True),
@@ -163,6 +172,8 @@ def run_module():
 
     vault_id = module.params.get("vault_id")
 
+    token = None
+
     try:
         token = login(server_base_url, app_key, app_secret)
         entries = get_vault_entries(server_base_url, token, vault_id)
@@ -172,9 +183,10 @@ def run_module():
         vault_body = {
             "name": secret_name,
             "type": secret_type,
-            "subtype": secret_subtype,
+            "subType": secret_subtype,
             "path": secret_path,
-            "description": description,
+            "description": description or "",
+            "tags": [],
             "data": {"username": secret_name, "password": password},
         }
 
@@ -188,14 +200,15 @@ def run_module():
         # when an existing entry is found, it gets updated. Otherwise a new entry gets created
         entry = find_entry_by_name(path_entries, secret_name, secret_path)
         if entry:
+            vault_body["tags"] = entry.get("tags") or []
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry['id']}"
             response = requests.put(vault_url, headers=vault_headers, json=vault_body)
-            response.raise_for_status()
+            raise_for_dvls_error(response)
             result["id"] = entry["id"]
         else:
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
             response = requests.post(vault_url, headers=vault_headers, json=vault_body)
-            response.raise_for_status()
+            raise_for_dvls_error(response)
             result["id"] = response.json()["id"]
 
         result["changed"] = True
@@ -203,7 +216,11 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        logout(server_base_url, token)
+        if token:
+            try:
+                logout(server_base_url, token)
+            except Exception:
+                module.warn("Failed to log out from DVLS.")
 
     module.exit_json(**result)
 

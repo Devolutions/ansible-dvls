@@ -135,6 +135,8 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
 
+    token = None
+
     try:
         token = login(server_base_url, app_key, app_secret)
 
@@ -203,7 +205,11 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        logout(server_base_url, token)
+        if token:
+            try:
+                logout(server_base_url, token)
+            except Exception:
+                module.warn("Failed to log out from DVLS.")
 
     module.exit_json(**result)
 
