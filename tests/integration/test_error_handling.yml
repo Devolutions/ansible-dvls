@@ -1,0 +1,59 @@
+---
+- name: Test that DVLS errors reach the user instead of being masked
+  hosts: localhost
+  gather_facts: false
+  vars:
+    unreachable_url: "https://127.0.0.1:1"
+    fake_vault_id: "00000000-0000-0000-0000-000000000000"
+  module_defaults:
+    devolutions.dvls.fetch_server:
+      server_base_url: "{{ unreachable_url }}"
+      app_key: not-a-real-app-key
+      app_secret: not-a-real-app-secret
+    devolutions.dvls.fetch_secrets:
+      server_base_url: "{{ unreachable_url }}"
+      app_key: not-a-real-app-key
+      app_secret: not-a-real-app-secret
+      vault_id: "{{ fake_vault_id }}"
+    devolutions.dvls.create_secret:
+      server_base_url: "{{ unreachable_url }}"
+      app_key: not-a-real-app-key
+      app_secret: not-a-real-app-secret
+      vault_id: "{{ fake_vault_id }}"
+  tasks:
+    - name: Fetch the server from an unreachable DVLS
+      devolutions.dvls.fetch_server:
+      register: server_result
+      ignore_errors: true
+
+    - name: Fetch secrets from an unreachable DVLS
+      devolutions.dvls.fetch_secrets:
+      register: secrets_result
+      ignore_errors: true
+
+    - name: Create a secret on an unreachable DVLS
+      devolutions.dvls.create_secret:
+        secret:
+          secret_name: never-created
+          value: never-stored
+      register: create_result
+      ignore_errors: true
+
+    - name: Assert every module reported the login failure itself
+      ansible.builtin.assert:
+        that:
+          - item.result is failed
+          - "'Failed to login' in item.result.msg"
+        fail_msg: >-
+          {{ item.name }} masked the login error instead of reporting it:
+          {{ item.result.msg | default('no message') }}
+        success_msg: "{{ item.name }} reported the login failure"
+      loop:
+        - name: fetch_server
+          result: "{{ server_result }}"
+        - name: fetch_secrets
+          result: "{{ secrets_result }}"
+        - name: create_secret
+          result: "{{ create_result }}"
+      loop_control:
+        label: "{{ item.name }}"

@@ -6,6 +6,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   integration-test:
     runs-on: ubuntu-latest
@@ -39,7 +42,7 @@ jobs:
           OUTPUT=$(ansible-galaxy collection build)
           echo "$OUTPUT"
           COLLECTION_PATH=$(echo "$OUTPUT" | grep -o '/[^ ]*\.tar\.gz')
-          echo "collection_path=$COLLECTION_PATH" >> $GITHUB_OUTPUT
+          echo "collection_path=$COLLECTION_PATH" >> "$GITHUB_OUTPUT"
           echo "Collection path: $COLLECTION_PATH"
 
       - name: Install collection
@@ -49,14 +52,14 @@ jobs:
       - name: Test collection documentation
         run: |
           # Generate the list of modules dynamically
-          ansible_modules=($(ansible-doc -l devolutions.dvls | awk '{print $1}'))
+          mapfile -t ansible_modules < <(ansible-doc -l devolutions.dvls | awk '{print $1}')
 
           # Check if any modules were found
           if [ ${#ansible_modules[@]} -eq 0 ]; then
             echo "Error: No modules found for devolutions.dvls."
             exit 1
           fi
-          echo "Modules: ${ansible_modules[@]}"
+          echo "Modules: ${ansible_modules[*]}"
 
           # Loop through each module and run ansible-doc
           for ansible_module in "${ansible_modules[@]}"; do
@@ -91,3 +94,47 @@ jobs:
           DVLS_APP_SECRET: ${{ secrets.DVLS_APP_SECRET }}
           DVLS_SERVER_BASE_URL: ${{ secrets.DVLS_SERVER_BASE_URL }}
           DVLS_VAULT_ID: ${{ secrets.DVLS_VAULT_ID }}
+
+  error-handling:
+    name: Error handling (ansible ${{ matrix.ansible }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible: [~=11.3, ~=12.0]
+    defaults:
+      run:
+        working-directory: ansible/ansible_collections/devolutions/dvls
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          path: ansible/ansible_collections/devolutions/dvls
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.13
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "ansible${{ matrix.ansible }}" requests
+          python3 -m pip list
+
+      - name: Build collection
+        id: build
+        run: |
+          OUTPUT=$(ansible-galaxy collection build)
+          echo "$OUTPUT"
+          COLLECTION_PATH=$(echo "$OUTPUT" | grep -o '/[^ ]*\.tar\.gz')
+          echo "collection_path=$COLLECTION_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Install collection
+        run: ansible-galaxy collection install ${{ steps.build.outputs.collection_path }} --force
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
+
+      - name: Run error handling
+        run: ansible-playbook test_error_handling.yml
+        working-directory: ansible/ansible_collections/devolutions/dvls/tests/integration
