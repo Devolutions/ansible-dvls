@@ -1,14 +1,7 @@
 import json
-import traceback
-
-try:
-    import requests
-except ImportError:
-    HAS_REQUESTS_LIBRARY = False
-    REQUESTS_LIBRARY_IMPORT_ERROR = traceback.format_exc()
-else:
-    HAS_REQUESTS_LIBRARY_LIBRARY = True
-    REQUESTS_LIBRARY_IMPORT_ERROR = None
+from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
+    request as http_request,
+)
 
 
 def login(server_base_url, app_key, app_secret):
@@ -17,8 +10,8 @@ def login(server_base_url, app_key, app_secret):
     login_headers = {"Content-Type": "application/json"}
 
     try:
-        response = requests.post(
-            login_url, headers=login_headers, data=json.dumps(login_data)
+        response = http_request(
+            "POST", login_url, headers=login_headers, data=json.dumps(login_data)
         )
         response.raise_for_status()
     except Exception as e:
@@ -39,5 +32,5 @@ def logout(server_base_url, token):
     logout_url = f"{server_base_url}/api/v1/logout"
     logout_headers = {"Content-Type": "application/json", "tokenId": token}
 
-    requests.post(logout_url, headers=logout_headers)
+    http_request("POST", logout_url, headers=logout_headers)
     return None

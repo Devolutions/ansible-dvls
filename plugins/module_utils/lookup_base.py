@@ -11,6 +11,9 @@ try:
         login,
         logout,
     )
+    from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
+        configure as http_configure,
+    )
     from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
         get_vault_entry,
         get_vault_entry_from_name,
@@ -93,6 +96,12 @@ class DVLSLookupHelper:
                 "DVLS_APP_SECRET, and DVLS_VAULT_ID environment variables or pass as parameters."
             )
 
+        http_configure(
+            timeout=get_option("timeout"),
+            validate_certs=get_option("validate_certs"),
+            ca_path=get_option("ca_path"),
+        )
+
         return {
             "server_base_url": server_base_url,
             "app_key": app_key,
@@ -144,9 +153,7 @@ class DVLSLookupHelper:
             credential = response.get("data", {})
         elif "\\" in term:
             self._display.vvv(f"Using path lookup for {term}")
-            response = get_vault_entry_from_path(
-                server_base_url, token, vault_id, term
-            )
+            response = get_vault_entry_from_path(server_base_url, token, vault_id, term)
             entries = response.get("data", [])
             if not entries:
                 raise self._ansible_error(
@@ -158,15 +165,11 @@ class DVLSLookupHelper:
                 raise self._ansible_error(
                     f"Entry at path '{term}' is missing required 'id' field"
                 )
-            full_response = get_vault_entry(
-                server_base_url, token, vault_id, entry_id
-            )
+            full_response = get_vault_entry(server_base_url, token, vault_id, entry_id)
             credential = full_response.get("data", {})
         else:
             self._display.vvv(f"Using name lookup for {term}")
-            response = get_vault_entry_from_name(
-                server_base_url, token, vault_id, term
-            )
+            response = get_vault_entry_from_name(server_base_url, token, vault_id, term)
             entries = response.get("data", [])
             if not entries:
                 raise self._ansible_error(
@@ -178,9 +181,7 @@ class DVLSLookupHelper:
                 raise self._ansible_error(
                     f"Entry for '{term}' is missing required 'id' field"
                 )
-            full_response = get_vault_entry(
-                server_base_url, token, vault_id, entry_id
-            )
+            full_response = get_vault_entry(server_base_url, token, vault_id, entry_id)
             credential = full_response.get("data", {})
 
         if not credential:

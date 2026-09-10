@@ -16,19 +16,27 @@ description:
 
 options:
     server_base_url:
-        description: The base URL of your DVLS.
+        description:
+            - The base URL of your DVLS.
+            - Falls back to the DVLS_SERVER_BASE_URL environment variable.
         required: true
         type: str
     app_key:
-        description: Application key for DVLS authentication.
+        description:
+            - Application key for DVLS authentication.
+            - Falls back to the DVLS_APP_KEY environment variable.
         required: true
         type: str
     app_secret:
-        description: Application secret for DVLS authentication.
+        description:
+            - Application secret for DVLS authentication.
+            - Falls back to the DVLS_APP_SECRET environment variable.
         required: true
         type: str
     vault_id:
-        description: The ID of the vault to access.
+        description:
+            - The ID of the vault to access.
+            - Falls back to the DVLS_VAULT_ID environment variable.
         required: true
         type: str
     secrets:
@@ -57,6 +65,21 @@ options:
                 required: false
                 type: str
 
+    validate_certs:
+        description: Whether to verify the TLS certificate of the DVLS server.
+        required: false
+        type: bool
+        default: true
+    ca_path:
+        description: Path to a CA bundle used to verify the DVLS certificate.
+        required: false
+        type: path
+    timeout:
+        description: Timeout in seconds for each HTTP request to DVLS.
+        required: false
+        type: int
+        default: 30
+
 author:
     - Danny Bédard (@DannyBedard)
 """
@@ -82,7 +105,10 @@ secrets:
     returned: always
 """
 
-from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
+    configure as configure_http,
+)
+from ansible.module_utils.basic import AnsibleModule, env_fallback
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
 from ansible_collections.devolutions.dvls.plugins.module_utils.utils import (
     get_sensible_value,
@@ -99,10 +125,27 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
 
 def run_module():
     argument_spec = dict(
-        server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True, no_log=True),
-        app_secret=dict(type="str", required=True, no_log=True),
-        vault_id=dict(type="str", required=True),
+        server_base_url=dict(
+            type="str", required=True, fallback=(env_fallback, ["DVLS_SERVER_BASE_URL"])
+        ),
+        app_key=dict(
+            type="str",
+            required=True,
+            no_log=True,
+            fallback=(env_fallback, ["DVLS_APP_KEY"]),
+        ),
+        app_secret=dict(
+            type="str",
+            required=True,
+            no_log=True,
+            fallback=(env_fallback, ["DVLS_APP_SECRET"]),
+        ),
+        validate_certs=dict(type="bool", required=False, default=True),
+        ca_path=dict(type="path", required=False),
+        timeout=dict(type="int", required=False, default=30),
+        vault_id=dict(
+            type="str", required=True, fallback=(env_fallback, ["DVLS_VAULT_ID"])
+        ),
         secrets=dict(
             type="list",
             elements="dict",
@@ -122,6 +165,12 @@ def run_module():
 
     module = AnsibleModule(argument_spec=argument_spec, supports_check_mode=True)
 
+    configure_http(
+        timeout=module.params["timeout"],
+        validate_certs=module.params["validate_certs"],
+        ca_path=module.params["ca_path"],
+    )
+
     if module.check_mode:
         module.exit_json(**result)
 
@@ -140,7 +189,6 @@ def run_module():
     try:
         token = login(server_base_url, app_key, app_secret)
 
-        entries = get_vault_entries(server_base_url, token, vault_id)
         fetched_secrets = {}
 
         if secrets:
@@ -178,26 +226,29 @@ def run_module():
                     entries = get_vault_entry_from_tag(
                         server_base_url, token, vault_id, secret_tag
                     )
-                    fetched_secrets = get_sensible_value(
-                        server_base_url, token, vault_id, entries
+                    fetched_secrets.update(
+                        get_sensible_value(server_base_url, token, vault_id, entries)
                     )
                 elif secret_path:
                     entries = get_vault_entry_from_path(
                         server_base_url, token, vault_id, secret_path
                     )
-                    fetched_secrets = get_sensible_value(
-                        server_base_url, token, vault_id, entries
+                    fetched_secrets.update(
+                        get_sensible_value(server_base_url, token, vault_id, entries)
                     )
                 elif secret_type:
                     entries = get_vault_entry_from_type(
                         server_base_url, token, vault_id, secret_type
                     )
-                    fetched_secrets = get_sensible_value(
-                        server_base_url, token, vault_id, entries
+                    fetched_secrets.update(
+                        get_sensible_value(server_base_url, token, vault_id, entries)
                     )
         else:
             fetched_secrets = get_sensible_value(
-                server_base_url, token, vault_id, entries
+                server_base_url,
+                token,
+                vault_id,
+                get_vault_entries(server_base_url, token, vault_id),
             )
 
         result = fetched_secrets
