@@ -23,7 +23,11 @@ _options = {"timeout": DEFAULT_TIMEOUT, "verify": True}
 
 def configure(timeout=None, validate_certs=True, ca_path=None):
     _options["timeout"] = DEFAULT_TIMEOUT if timeout is None else timeout
-    _options["verify"] = ca_path if ca_path else bool(validate_certs)
+
+    if not validate_certs:
+        _options["verify"] = False
+    else:
+        _options["verify"] = ca_path or True
 
 
 def request(method, url, **kwargs):
