@@ -1,14 +1,21 @@
 ---
-- name: Fetch DVLS
+- name: Test the DVLS server module
   hosts: localhost
+  gather_facts: false
   tasks:
-    - name: Fetch dvls server
+    - name: Fetch the server information
       devolutions.dvls.fetch_server:
         server_base_url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}"
         app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
         app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
       register: server
 
-    - name: Check server version
-      ansible.builtin.debug:
-        var: server.version
+    - name: Assert the server reported a version, an access URI and its vaults
+      ansible.builtin.assert:
+        that:
+          - server.version is defined
+          - server.version | length > 0
+          - server.accessURI is defined
+          - server.accessURI is search('^https?://')
+          - server.vaults | length > 0
+          - server.vaults | selectattr('id', 'equalto', lookup('env', 'DVLS_VAULT_ID')) | list | length == 1
