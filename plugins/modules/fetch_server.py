@@ -75,6 +75,8 @@ def run_module():
     app_key = module.params["app_key"]
     app_secret = module.params["app_secret"]
 
+    token = None
+
     try:
         token = login(server_base_url, app_key, app_secret)
         vaults = get_vaults(server_base_url, token)
@@ -98,7 +100,11 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        logout(server_base_url, token)
+        if token:
+            try:
+                logout(server_base_url, token)
+            except Exception:
+                module.warn("Failed to log out from DVLS.")
 
     module.exit_json(**result)
 

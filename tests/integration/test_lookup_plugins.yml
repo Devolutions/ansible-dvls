@@ -1,319 +1,122 @@
 ---
-- name: Test DVLS Lookup Plugins
+- name: Test the DVLS lookup plugins
   hosts: localhost
+  gather_facts: false
   vars:
-    # Test credential that should exist in the DVLS test instance
-    test_credential_name: "lookup-plugin"
-    test_credential_id: "8f586548-7688-4981-8d56-09509ab68101"
-    test_credential_path: "tests\\lookup-plugin"
+    test_path: "tests\\create-secrets"
+    shared_folder_path: "tests\\lookup-plugin"
+  module_defaults:
+    devolutions.dvls.create_secret:
+      server_base_url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}"
+      app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+      app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+      vault_id: "{{ lookup('env', 'DVLS_VAULT_ID') }}"
   tasks:
-    # ========================================
-    # Tests for devolutions.dvls.secret plugin
-    # ========================================
+    - name: Generate the values used by this run
+      ansible.builtin.set_fact:
+        run_id: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_lowercase', 'digits'], length=10) }}"
+        lookup_password: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_lowercase', 'digits'], length=24) }}"
 
-    - name: Test secret lookup - password field (default)
+    - name: Name the entry this run will create
+      ansible.builtin.set_fact:
+        entry_name: "ci-lookup-{{ run_id }}"
+
+    - name: Exercise the lookup plugins
       block:
-        - name: Lookup password field by name
-          set_fact:
-            password_value: "{{ lookup('devolutions.dvls.secret', test_credential_name) }}"
+        - name: Create the credential the lookups will read
+          devolutions.dvls.create_secret:
+            secret:
+              secret_path: "{{ test_path }}"
+              secret_name: "{{ entry_name }}"
+              value: "{{ lookup_password }}"
+          register: created
 
-        - name: Print full credential object for inspection
-          ansible.builtin.debug:
-            var: lookup('devolutions.dvls.secret_full', test_credential_name)
+        - name: Look the password up by name and by id
+          ansible.builtin.set_fact:
+            password_by_name: "{{ lookup('devolutions.dvls.secret', entry_name) }}"
+            password_by_id: "{{ lookup('devolutions.dvls.secret', created.id) }}"
+          no_log: true
 
-        - name: Verify password was retrieved
+        - name: Assert both lookup methods return the value that was written
           ansible.builtin.assert:
             that:
-              - password_value is defined
-              - password_value | length > 0
-            fail_msg: "Failed to retrieve password field"
-            success_msg: "Successfully retrieved password field"
+              - password_by_name == lookup_password
+              - password_by_id == lookup_password
 
-    - name: Test secret lookup - username field
-      block:
-        - name: Lookup username field by name
-          set_fact:
-            username_value: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='username') }}"
+        - name: Look up a specific field
+          ansible.builtin.set_fact:
+            username_value: "{{ lookup('devolutions.dvls.secret', entry_name, field='username') }}"
+          no_log: true
 
-        - name: Verify username was retrieved
+        - name: Assert the field lookup returned a value
           ansible.builtin.assert:
             that:
-              - username_value is defined
               - username_value | length > 0
-            fail_msg: "Failed to retrieve username field"
-            success_msg: "Successfully retrieved username field"
 
-    - name: Test secret lookup - by UUID
-      block:
-        - name: Lookup password by UUID
-          set_fact:
-            password_by_id: "{{ lookup('devolutions.dvls.secret', test_credential_id) }}"
+        - name: Look the full credential up by name and by id
+          ansible.builtin.set_fact:
+            full_by_name: "{{ lookup('devolutions.dvls.secret_full', entry_name) }}"
+            full_by_id: "{{ lookup('devolutions.dvls.secret_full', created.id) }}"
+          no_log: true
 
-        - name: Verify password was retrieved by UUID
+        - name: Assert the full credential is consistent across both methods
           ansible.builtin.assert:
             that:
-              - password_by_id is defined
-              - password_by_id | length > 0
-            fail_msg: "Failed to retrieve password by UUID"
-            success_msg: "Successfully retrieved password by UUID"
+              - full_by_name.password == lookup_password
+              - full_by_name.username == full_by_id.username
 
-        - name: Verify UUID and name lookups return the same password
+        - name: Look up the entry that is alone in the shared test folder, by path and by name
+          ansible.builtin.set_fact:
+            shared_by_path: "{{ lookup('devolutions.dvls.secret_full', shared_folder_path) }}"
+            shared_by_name: "{{ lookup('devolutions.dvls.secret_full', 'lookup-plugin') }}"
+          no_log: true
+
+        - name: Assert the path lookup and the name lookup return the same credential
           ansible.builtin.assert:
             that:
-              - password_value == password_by_id
-            fail_msg: "Password retrieved by UUID doesn't match password retrieved by name"
-            success_msg: "UUID and name lookups return identical passwords"
+              - shared_by_path.username == shared_by_name.username
+              - shared_by_path.password == shared_by_name.password
 
-    - name: Test secret lookup - by path
-      block:
-        - name: Lookup password by path
-          set_fact:
-            password_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path) }}"
-
-        - name: Verify password was retrieved by path
-          ansible.builtin.assert:
-            that:
-              - password_by_path is defined
-              - password_by_path | length > 0
-            fail_msg: "Failed to retrieve password by path"
-            success_msg: "Successfully retrieved password by path"
-
-        - name: Verify path and name lookups return the same password
-          ansible.builtin.assert:
-            that:
-              - password_value == password_by_path
-            fail_msg: "Password retrieved by path doesn't match password retrieved by name"
-            success_msg: "Path and name lookups return identical passwords"
-
-    - name: Test secret lookup - by path with specific field
-      block:
-        - name: Lookup username by path
-          set_fact:
-            username_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path, field='username') }}"
-
-        - name: Verify username was retrieved by path
-          ansible.builtin.assert:
-            that:
-              - username_by_path is defined
-              - username_by_path | length > 0
-            fail_msg: "Failed to retrieve username by path"
-            success_msg: "Successfully retrieved username by path"
-
-        - name: Verify path and name lookups return the same username
-          ansible.builtin.assert:
-            that:
-              - username_value == username_by_path
-            fail_msg: "Username retrieved by path doesn't match username retrieved by name"
-            success_msg: "Path and name lookups return identical usernames for specific field"
-
-    - name: Test secret lookup - domain field
-      block:
-        - name: Lookup domain field
-          set_fact:
-            domain_value: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='domain') }}"
-          ignore_errors: true
-          register: domain_result
-
-        - name: Show domain value (may be empty)
-          ansible.builtin.debug:
-            msg: "Domain: {{ domain_value | default('not set') }}"
-
-        - name: Verify domain field behavior
-          ansible.builtin.assert:
-            that:
-              - (domain_result is succeeded and domain_value is defined) or domain_result is failed
-            fail_msg: "Domain field lookup produced unexpected result"
-            success_msg: "Domain field lookup behaved as expected (field may or may not exist on credential)"
-
-    - name: Test secret lookup - multiple credentials at once
-      block:
-        - name: Fetch username and password in one task
-          set_fact:
-            db_username: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='username') }}"
-            db_password: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='password') }}"
-
-        - name: Verify both values retrieved
-          ansible.builtin.assert:
-            that:
-              - db_username is defined
-              - db_password is defined
-            fail_msg: "Failed to retrieve multiple fields"
-            success_msg: "Successfully retrieved multiple fields"
-
-    - name: Test secret lookup - error handling (invalid field)
-      block:
-        - name: Try to lookup invalid field
-          set_fact:
-            invalid_field: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='nonexistent_field') }}"
+        - name: Look up an unsupported field
+          ansible.builtin.set_fact:
+            invalid_field: "{{ lookup('devolutions.dvls.secret', entry_name, field='nonexistent_field') }}"
           ignore_errors: true
           register: invalid_field_result
 
-        - name: Verify error was raised
+        - name: Assert an unsupported field fails
           ansible.builtin.assert:
             that:
               - invalid_field_result is failed
-            fail_msg: "Should have failed with invalid field"
-            success_msg: "Correctly failed with invalid field"
 
-    # ========================================
-    # Tests for devolutions.dvls.secret_full plugin
-    # ========================================
-
-    - name: Test secret_full lookup - by name
-      block:
-        - name: Lookup full credential object by name
-          set_fact:
-            full_cred: "{{ lookup('devolutions.dvls.secret_full', test_credential_name) }}"
-
-        - name: Verify full credential object was retrieved
-          ansible.builtin.assert:
-            that:
-              - full_cred is defined
-              - full_cred is mapping
-              - full_cred.username is defined or full_cred.password is defined
-            fail_msg: "Failed to retrieve full credential object"
-            success_msg: "Successfully retrieved full credential object"
-
-        - name: Display full credential (masked)
-          ansible.builtin.debug:
-            msg:
-              - "Username: {{ full_cred.username | default('N/A') }}"
-              - "Domain: {{ full_cred.domain | default('N/A') }}"
-              - "Password: ***MASKED***"
-
-    - name: Test secret_full lookup - by UUID
-      block:
-        - name: Lookup full credential object by UUID
-          set_fact:
-            full_cred_by_id: "{{ lookup('devolutions.dvls.secret_full', test_credential_id) }}"
-
-        - name: Verify full credential object was retrieved by UUID
-          ansible.builtin.assert:
-            that:
-              - full_cred_by_id is defined
-              - full_cred_by_id is mapping
-            fail_msg: "Failed to retrieve full credential by UUID"
-            success_msg: "Successfully retrieved full credential by UUID"
-
-    - name: Test secret_full lookup - by path
-      block:
-        - name: Lookup full credential object by path
-          set_fact:
-            full_cred_by_path: "{{ lookup('devolutions.dvls.secret_full', test_credential_path) }}"
-
-        - name: Verify full credential object was retrieved by path
-          ansible.builtin.assert:
-            that:
-              - full_cred_by_path is defined
-              - full_cred_by_path is mapping
-              - full_cred_by_path.username is defined or full_cred_by_path.password is defined
-            fail_msg: "Failed to retrieve full credential by path"
-            success_msg: "Successfully retrieved full credential by path"
-
-        - name: Verify path and name lookups return the same credential
-          ansible.builtin.assert:
-            that:
-              - full_cred.username == full_cred_by_path.username
-              - full_cred.password == full_cred_by_path.password
-            fail_msg: "Credential retrieved by path doesn't match credential retrieved by name"
-            success_msg: "Path and name lookups return identical credentials"
-
-    - name: Test secret_full lookup - accessing multiple fields
-      block:
-        - name: Get credential and use multiple fields
-          set_fact:
-            cred: "{{ lookup('devolutions.dvls.secret_full', test_credential_name) }}"
-
-        - name: Use fields from credential
-          ansible.builtin.debug:
-            msg:
-              - "Configuring connection with:"
-              - "  Username: {{ cred.username | default('N/A') }}"
-              - "  Domain: {{ cred.domain | default('N/A') }}"
-
-        - name: Verify we can access multiple fields
-          ansible.builtin.assert:
-            that:
-              - cred.username is defined or cred.password is defined
-            fail_msg: "Could not access credential fields"
-            success_msg: "Successfully accessed multiple fields"
-
-    - name: Test secret_full lookup - error handling (invalid credential)
-      block:
-        - name: Try to lookup non-existent credential
-          set_fact:
-            nonexistent: "{{ lookup('devolutions.dvls.secret_full', 'this-credential-does-not-exist-12345') }}"
+        - name: Look up a credential that does not exist
+          ansible.builtin.set_fact:
+            missing_credential: "{{ lookup('devolutions.dvls.secret_full', 'this-credential-does-not-exist-12345') }}"
           ignore_errors: true
-          register: nonexistent_result
+          register: missing_credential_result
 
-        - name: Verify error was raised
+        - name: Assert a missing credential fails
           ansible.builtin.assert:
             that:
-              - nonexistent_result is failed
-            fail_msg: "Should have failed with non-existent credential"
-            success_msg: "Correctly failed with non-existent credential"
+              - missing_credential_result is failed
 
-    # ========================================
-    # Comparison tests
-    # ========================================
+      always:
+        - name: Log in to DVLS for the cleanup
+          ansible.builtin.uri:
+            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v1/login"
+            method: POST
+            body_format: json
+            body:
+              appKey: "{{ lookup('env', 'DVLS_APP_KEY') }}"
+              appSecret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+          register: cleanup_login
+          no_log: true
 
-    - name: Compare secret vs secret_full
-      block:
-        - name: Get password using secret plugin
-          set_fact:
-            password_field: "{{ lookup('devolutions.dvls.secret', test_credential_name, field='password') }}"
-
-        - name: Get full object using secret_full plugin
-          set_fact:
-            full_object: "{{ lookup('devolutions.dvls.secret_full', test_credential_name) }}"
-
-        - name: Verify both return the same password
-          ansible.builtin.assert:
-            that:
-              - password_field == full_object.password
-            fail_msg: "Password from secret and secret_full don't match"
-            success_msg: "Password values match between plugins"
-
-    - name: Compare name vs UUID vs path lookups
-      block:
-        - name: Fetch password using all three methods
-          set_fact:
-            pwd_by_name: "{{ lookup('devolutions.dvls.secret', test_credential_name) }}"
-            pwd_by_uuid: "{{ lookup('devolutions.dvls.secret', test_credential_id) }}"
-            pwd_by_path: "{{ lookup('devolutions.dvls.secret', test_credential_path) }}"
-
-        - name: Verify all three methods return the same password
-          ansible.builtin.assert:
-            that:
-              - pwd_by_name == pwd_by_uuid
-              - pwd_by_name == pwd_by_path
-              - pwd_by_uuid == pwd_by_path
-            fail_msg: "Passwords from different lookup methods don't match"
-            success_msg: "All three lookup methods (name, UUID, path) return identical results"
-
-        - name: Fetch full objects using all three methods
-          set_fact:
-            obj_by_name: "{{ lookup('devolutions.dvls.secret_full', test_credential_name) }}"
-            obj_by_uuid: "{{ lookup('devolutions.dvls.secret_full', test_credential_id) }}"
-            obj_by_path: "{{ lookup('devolutions.dvls.secret_full', test_credential_path) }}"
-
-        - name: Verify all three methods return the same credential object
-          ansible.builtin.assert:
-            that:
-              - obj_by_name.username == obj_by_uuid.username
-              - obj_by_name.username == obj_by_path.username
-              - obj_by_name.password == obj_by_uuid.password
-              - obj_by_name.password == obj_by_path.password
-            fail_msg: "Credential objects from different lookup methods don't match"
-            success_msg: "All three lookup methods return identical credential objects"
-
-    - name: Summary
-      ansible.builtin.debug:
-        msg:
-          - "=========================================="
-          - "All lookup plugin tests completed!"
-          - "=========================================="
-          - "secret plugin: Retrieves specific fields"
-          - "secret_full plugin: Retrieves complete objects"
-          - "Lookup methods tested: name, UUID, and path"
-          - "All plugins and lookup methods tested successfully!"
+        - name: Delete the entry this run created
+          ansible.builtin.uri:
+            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v1/vault/{{ lookup('env', 'DVLS_VAULT_ID') }}/entry/{{ item }}"
+            method: DELETE
+            headers:
+              tokenId: "{{ cleanup_login.json.tokenId }}"
+            status_code: [200, 202, 204]
+          no_log: true
+          loop: "{{ [created.id | default('')] | select | list }}"
