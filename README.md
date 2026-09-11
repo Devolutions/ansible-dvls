@@ -10,14 +10,44 @@ This Ansible module allows you to authenticate with DVLS and fetch server inform
 
 ## Requirements
 - Ansible 2.18
-- Python `requests` library
+- Python `requests` library, installed on the machine that runs the module
 - A DVLS application identity (create at `{your-dvls-url}/administration/applications`).
   - The application must have permissions to fetch the desired secrets.
 
+Modules run on the target host by default, so that host is the one that needs
+network access to DVLS and the `requests` library. Add `delegate_to: localhost`
+to a task to run it from the controller instead. Lookup plugins always run on
+the controller.
+
 Set the following environment variables for DVLS authentication:
 ```sh
+export DVLS_SERVER_BASE_URL="https://example.yourcompany.com"
 export DVLS_APP_KEY="your_app_key_here"
 export DVLS_APP_SECRET="your_app_secret_here"
+export DVLS_VAULT_ID="00000000-0000-0000-0000-000000000000"
+```
+
+`server_base_url`, `app_key`, `app_secret` and `vault_id` fall back to these
+variables when they are not passed to a task or a lookup.
+
+## Connection options
+
+Every module and lookup accepts:
+
+| Option | Default | Description |
+|---|---|---|
+| `validate_certs` | `true` | Verify the TLS certificate of the DVLS server. |
+| `ca_path` | none | Path to a CA bundle used to verify that certificate. |
+| `timeout` | `30` | Timeout in seconds for each HTTP request. |
+
+```yaml
+- name: Fetch secrets from a DVLS using a private CA
+  devolutions.dvls.fetch_secrets:
+    vault_id: "00000000-0000-0000-0000-000000000000"
+    ca_path: /etc/pki/tls/certs/internal-ca.pem
+    timeout: 60
+  delegate_to: localhost
+  register: value
 ```
 
 ## Usage with static secrets file
@@ -54,7 +84,7 @@ Use the following playbook to authenticate with DVLS and fetch the secrets defin
 
     - name: Dump a secret
       debug:
-        msg: "{{ value['name-or-id'].value }}"
+        msg: "{{ value['name-or-id'].password }}"
 ```
 
 ## Usage fetching all secrets
@@ -78,7 +108,7 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
 
     - name: Dump a secret
       debug:
-        msg: "{{ value['name-or-id'].value }}"
+        msg: "{{ value['name-or-id'].password }}"
 ```
 
 ## Usage fetching server info and vaults list
@@ -86,7 +116,7 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
 ```yaml
 ---
 - name: Fetch dvls server information
-    server:
+  devolutions.dvls.fetch_server:
     server_base_url: "https://example.yourcompany.com"
     app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
     app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
@@ -214,7 +244,7 @@ lookup('devolutions.dvls.secret', '12345678-1234-1234-1234-123456789012')
 
 ## Secrets definition
 
-To access a particular field within a secret, you can use the format ```{{ secrets['name-or-id'].value }}```. Here's a breakdown of the available categories and their fields:
+To access a particular field within a secret, you can use the format ```{{ secrets['name-or-id'].<field> }}```. Here's a breakdown of the available categories and their fields:
 
 | **Category**              | **Fields**                                                                                                                |
 |---------------------------|---------------------------------------------------------------------------------------------------------------------------|

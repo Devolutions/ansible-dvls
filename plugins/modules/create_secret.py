@@ -16,19 +16,27 @@ description:
 
 options:
     server_base_url:
-        description: The base URL of your DVLS.
+        description:
+            - The base URL of your DVLS.
+            - Falls back to the DVLS_SERVER_BASE_URL environment variable.
         required: true
         type: str
     app_key:
-        description: Application key for DVLS authentication.
+        description:
+            - Application key for DVLS authentication.
+            - Falls back to the DVLS_APP_KEY environment variable.
         required: true
         type: str
     app_secret:
-        description: Application secret for DVLS authentication.
+        description:
+            - Application secret for DVLS authentication.
+            - Falls back to the DVLS_APP_SECRET environment variable.
         required: true
         type: str
     vault_id:
-        description: The ID of the vault to access.
+        description:
+            - The ID of the vault to access.
+            - Falls back to the DVLS_VAULT_ID environment variable.
         required: true
         type: str
     secret:
@@ -63,6 +71,21 @@ options:
                 required: false
                 type: str
 
+    validate_certs:
+        description: Whether to verify the TLS certificate of the DVLS server.
+        required: false
+        type: bool
+        default: true
+    ca_path:
+        description: Path to a CA bundle used to verify the DVLS certificate.
+        required: false
+        type: path
+    timeout:
+        description: Timeout in seconds for each HTTP request to DVLS.
+        required: false
+        type: int
+        default: 30
+
 author:
     - Danny Bédard (@DannyBedard)
 """
@@ -88,23 +111,22 @@ id:
 
 """
 
-import traceback
-
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
+from ansible.module_utils.basic import (
+    AnsibleModule,
+    env_fallback,
+    missing_required_lib,
+)
 from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
+    HAS_REQUESTS_LIBRARY,
+    REQUESTS_LIBRARY_IMPORT_ERROR,
+    configure as configure_http,
+    request as http_request,
+)
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
     get_vault_entries,
     find_entry_by_name,
 )
-
-try:
-    import requests
-except ImportError:
-    HAS_REQUESTS_LIBRARY = False
-    REQUESTS_LIBRARY_IMPORT_ERROR = traceback.format_exc()
-else:
-    HAS_REQUESTS_LIBRARY = True
-    REQUESTS_LIBRARY_IMPORT_ERROR = None
 
 
 def raise_for_dvls_error(response):
@@ -118,10 +140,27 @@ def raise_for_dvls_error(response):
 
 def run_module():
     argument_spec = dict(
-        server_base_url=dict(type="str", required=True),
-        app_key=dict(type="str", required=True, no_log=True),
-        app_secret=dict(type="str", required=True, no_log=True),
-        vault_id=dict(type="str", required=True),
+        server_base_url=dict(
+            type="str", required=True, fallback=(env_fallback, ["DVLS_SERVER_BASE_URL"])
+        ),
+        app_key=dict(
+            type="str",
+            required=True,
+            no_log=True,
+            fallback=(env_fallback, ["DVLS_APP_KEY"]),
+        ),
+        app_secret=dict(
+            type="str",
+            required=True,
+            no_log=True,
+            fallback=(env_fallback, ["DVLS_APP_SECRET"]),
+        ),
+        validate_certs=dict(type="bool", required=False, default=True),
+        ca_path=dict(type="path", required=False),
+        timeout=dict(type="int", required=False, default=30),
+        vault_id=dict(
+            type="str", required=True, fallback=(env_fallback, ["DVLS_VAULT_ID"])
+        ),
         secret=dict(
             type="dict",
             options=dict(
@@ -144,6 +183,12 @@ def run_module():
     result = dict()
 
     module = AnsibleModule(argument_spec=argument_spec, supports_check_mode=True)
+
+    configure_http(
+        timeout=module.params["timeout"],
+        validate_certs=module.params["validate_certs"],
+        ca_path=module.params["ca_path"],
+    )
 
     if not HAS_REQUESTS_LIBRARY:
         module.fail_json(
@@ -197,17 +242,20 @@ def run_module():
             else entries
         )
 
-        # when an existing entry is found, it gets updated. Otherwise a new entry gets created
         entry = find_entry_by_name(path_entries, secret_name, secret_path)
         if entry:
             vault_body["tags"] = entry.get("tags") or []
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry['id']}"
-            response = requests.put(vault_url, headers=vault_headers, json=vault_body)
+            response = http_request(
+                "PUT", vault_url, headers=vault_headers, json=vault_body
+            )
             raise_for_dvls_error(response)
             result["id"] = entry["id"]
         else:
             vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-            response = requests.post(vault_url, headers=vault_headers, json=vault_body)
+            response = http_request(
+                "POST", vault_url, headers=vault_headers, json=vault_body
+            )
             raise_for_dvls_error(response)
             result["id"] = response.json()["id"]
 

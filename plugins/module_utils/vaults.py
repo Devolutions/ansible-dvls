@@ -1,13 +1,6 @@
-import traceback
-
-try:
-    import requests
-except ImportError:
-    HAS_REQUESTS_LIBRARY = False
-    REQUESTS_LIBRARY_IMPORT_ERROR = traceback.format_exc()
-else:
-    HAS_REQUESTS_LIBRARY_LIBRARY = True
-    REQUESTS_LIBRARY_IMPORT_ERROR = None
+from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
+    request as http_request,
+)
 
 
 def filter_folders(data, exact_match_field=None, exact_match_value=None):
@@ -67,7 +60,7 @@ def get_vaults(server_base_url, token):
     vaults_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(vaults_url, headers=vaults_headers)
+        response = http_request("GET", vaults_url, headers=vaults_headers)
         response.raise_for_status()
 
         json_data = response.json()
@@ -84,7 +77,7 @@ def get_vault_entry(server_base_url, token, vault_id, entry_id):
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(vault_url, headers=vault_headers)
+        response = http_request("GET", vault_url, headers=vault_headers)
         response.raise_for_status()
 
         return response.json()
@@ -97,8 +90,8 @@ def get_vault_entry_from_name(server_base_url, token, vault_id, entry_name):
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(
-            vault_url, headers=vault_headers, params={"name": entry_name}
+        response = http_request(
+            "GET", vault_url, headers=vault_headers, params={"name": entry_name}
         )
         response.raise_for_status()
 
@@ -121,8 +114,8 @@ def get_vault_entry_from_tag(server_base_url, token, vault_id, entry_tag):
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(
-            vault_url, headers=vault_headers, params={"tag": entry_tag}
+        response = http_request(
+            "GET", vault_url, headers=vault_headers, params={"tag": entry_tag}
         )
         response.raise_for_status()
 
@@ -137,8 +130,8 @@ def get_vault_entry_from_path(server_base_url, token, vault_id, entry_path):
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(
-            vault_url, headers=vault_headers, params={"path": entry_path}
+        response = http_request(
+            "GET", vault_url, headers=vault_headers, params={"path": entry_path}
         )
         response.raise_for_status()
 
@@ -156,8 +149,8 @@ def get_vault_entry_from_type(server_base_url, token, vault_id, entry_type):
     vault_headers = {"Content-Type": "application/json", "tokenId": token}
 
     try:
-        response = requests.get(
-            vault_url, headers=vault_headers, params={"type": entry_type}
+        response = http_request(
+            "GET", vault_url, headers=vault_headers, params={"type": entry_type}
         )
         response.raise_for_status()
 
@@ -178,7 +171,8 @@ def get_vault_entries(server_base_url, token, vault_id):
 
     try:
         while True:
-            response = requests.get(
+            response = http_request(
+                "GET",
                 vault_url,
                 headers=vault_headers,
                 params={"pageNumber": page},
