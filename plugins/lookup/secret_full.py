@@ -47,6 +47,21 @@ options:
       - Falls back to DVLS_VAULT_ID environment variable if not provided.
     type: str
     required: false
+  validate_certs:
+    description:
+      - Whether to verify the TLS certificate of the DVLS server.
+    type: bool
+    default: true
+  ca_path:
+    description:
+      - Path to a CA bundle used to verify the DVLS certificate.
+    type: path
+    required: false
+  timeout:
+    description:
+      - Timeout in seconds for each HTTP request to DVLS.
+    type: int
+    default: 30
 notes:
   - Requires network access to DVLS server.
   - Authentication token is cached for the duration of the playbook run.

@@ -3,11 +3,9 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Fetch the server information
+    - name: Fetch the server information using the environment variables
       devolutions.dvls.fetch_server:
-        server_base_url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}"
-        app_key: "{{ lookup('env', 'DVLS_APP_KEY') }}"
-        app_secret: "{{ lookup('env', 'DVLS_APP_SECRET') }}"
+        timeout: 60
       register: server
 
     - name: Assert the server reported a version, an access URI and its vaults
