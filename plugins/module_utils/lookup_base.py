@@ -69,7 +69,7 @@ class DVLSLookupHelper:
     @staticmethod
     def _cleanup_sessions():
         """Cleanup method called at interpreter exit to logout all cached sessions"""
-        for server_url, session in _session_cache.items():
+        for (server_url, _app_key), (_app_secret, session) in _session_cache.items():
             try:
                 session.logout()
             except (ConnectionError, TimeoutError, OSError):
@@ -111,30 +111,44 @@ class DVLSLookupHelper:
         }
 
     def authenticate(self, server_base_url, app_key, app_secret):
-        """Authenticate to DVLS and cache the session at module level"""
+        """Authenticate to DVLS and return the session, cached at module level per server and
+        application identity"""
         global _cleanup_registered
 
-        if server_base_url not in _session_cache:
-            try:
-                self._display.vvv(f"Authenticating to DVLS at {server_base_url}")
-                session = Session(server_base_url, app_key, app_secret)
-                session.login()
-                _session_cache[server_base_url] = session
-
-                if not _cleanup_registered:
-                    atexit.register(DVLSLookupHelper._cleanup_sessions)
-                    _cleanup_registered = True
-            except Exception as e:
-                raise self._ansible_error(f"DVLS authentication failed: {e}") from e
-        else:
+        # A session is reused only for the same identity and secret: another identity must never
+        # read with this one's rights, and a rotated secret must log in again.
+        cache_key = (server_base_url, app_key)
+        cached = _session_cache.get(cache_key)
+        if cached is not None and cached[0] == app_secret:
             self._display.vvv(f"Using cached session for {server_base_url}")
+            return cached[1]
 
-    def get_credential(self, server_base_url, vault_id, term):
+        try:
+            self._display.vvv(f"Authenticating to DVLS at {server_base_url}")
+            session = Session(server_base_url, app_key, app_secret)
+            session.login()
+        except Exception as e:
+            raise self._ansible_error(f"DVLS authentication failed: {e}") from e
+
+        if cached is not None:
+            try:
+                cached[1].logout()
+            except Exception:
+                pass
+        _session_cache[cache_key] = (app_secret, session)
+
+        if not _cleanup_registered:
+            atexit.register(DVLSLookupHelper._cleanup_sessions)
+            _cleanup_registered = True
+
+        return session
+
+    def get_credential(self, session, vault_id, term):
         """
         Retrieve a credential from DVLS by name, path, or UUID.
 
         Args:
-            server_base_url: DVLS server base URL
+            session: Session returned by authenticate()
             vault_id: Vault UUID
             term: Credential identifier (name, path, or UUID)
 
@@ -142,12 +156,6 @@ class DVLSLookupHelper:
             dict: Complete credential object
         """
         self._display.vvv(f"Looking up credential: {term}")
-        session = _session_cache.get(server_base_url)
-        if not session:
-            raise self._ansible_error(
-                f"Authentication session not found for server '{server_base_url}'. "
-                "Ensure authenticate() was called first."
-            )
 
         if self._is_uuid(term):
             self._display.vvv(f"Using ID lookup for {term}")

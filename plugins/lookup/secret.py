@@ -171,7 +171,7 @@ class LookupModule(LookupBase):
         self.set_options(var_options=variables, direct=kwargs)
 
         config = self._helper.get_config(self.get_option, variables)
-        self._helper.authenticate(
+        session = self._helper.authenticate(
             config["server_base_url"], config["app_key"], config["app_secret"]
         )
 
@@ -179,7 +179,7 @@ class LookupModule(LookupBase):
         for term in terms:
             try:
                 credential = self._helper.get_credential(
-                    config["server_base_url"], config["vault_id"], term
+                    session, config["vault_id"], term
                 )
                 result = self._transform_result(credential, term)
                 results.append(result)

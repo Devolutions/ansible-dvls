@@ -36,6 +36,11 @@ Breaking changes:
   `privateKeyOverridePassword` instead.
 - Errors show the HTTP status and the message DVLS gave, never the raw response body.
 
+Other changes:
+
+- Lookups cache their session per server and application identity: a lookup that passes other `app_key` or
+  `app_secret` values logs in with them instead of reusing the first session.
+
 Modules run on the target host by default, so that host is the one that needs
 network access to DVLS and the `requests` library. Add `delegate_to: localhost`
 to a task to run it from the controller instead. Lookup plugins always run on
