@@ -4,7 +4,8 @@
   gather_facts: false
   vars:
     test_path: "tests\\create-secrets"
-    shared_folder_path: "tests\\lookup-plugin"
+    shared_entry_path: "tests\\lookup-plugin\\lookup-plugin"
+    created_entry_path: "{{ test_path }}\\{{ entry_name }}"
   module_defaults:
     devolutions.dvls.create_secret:
       server_base_url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}"
@@ -65,9 +66,9 @@
               - full_by_name.password == lookup_password
               - full_by_name.username == full_by_id.username
 
-        - name: Look up the entry that is alone in the shared test folder, by path and by name
+        - name: Look up the entry of the shared test folder, by full path and by name
           ansible.builtin.set_fact:
-            shared_by_path: "{{ lookup('devolutions.dvls.secret_full', shared_folder_path) }}"
+            shared_by_path: "{{ lookup('devolutions.dvls.secret_full', shared_entry_path) }}"
             shared_by_name: "{{ lookup('devolutions.dvls.secret_full', 'lookup-plugin') }}"
           no_log: true
 
@@ -76,6 +77,27 @@
             that:
               - shared_by_path.username == shared_by_name.username
               - shared_by_path.password == shared_by_name.password
+
+        - name: Look up the entry this run created by full path
+          ansible.builtin.set_fact:
+            password_by_path: "{{ lookup('devolutions.dvls.secret', created_entry_path) }}"
+          no_log: true
+
+        - name: Assert the full path lookup returned the value that was written
+          ansible.builtin.assert:
+            that:
+              - password_by_path == lookup_password
+
+        - name: Look up a folder as if it were a credential
+          ansible.builtin.set_fact:
+            folder_as_credential: "{{ lookup('devolutions.dvls.secret_full', test_path) }}"
+          ignore_errors: true
+          register: folder_as_credential_result
+
+        - name: Assert a folder path does not resolve to a credential
+          ansible.builtin.assert:
+            that:
+              - folder_as_credential_result is failed
 
         - name: Look up an unsupported field
           ansible.builtin.set_fact:

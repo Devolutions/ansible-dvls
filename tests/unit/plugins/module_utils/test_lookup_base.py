@@ -5,7 +5,10 @@ __metaclass__ = type
 import pytest
 
 from ansible_collections.devolutions.dvls.plugins.module_utils import auth, lookup_base
-from ansible_collections.devolutions.dvls.tests.unit.plugins.module_utils.fakes import FakeResponse
+from ansible_collections.devolutions.dvls.tests.unit.plugins.module_utils.fakes import (
+    FakeResponse,
+    paged,
+)
 
 URL = "https://dvls.test"
 
@@ -71,3 +74,19 @@ def test_a_relogin_after_expiry_uses_the_session_identity(logins, monkeypatch):
     assert session_b.request("GET", "server/info").status_code == 200
     assert logins == [("A", "secret-a"), ("B", "secret-b"), ("B", "secret-b")]
 
+
+def test_full_path_term_reads_the_entry_in_its_folder(logins, monkeypatch):
+    session = helper().authenticate(URL, "A", "secret-a")
+    seen = []
+
+    def fake_request(method, path, **kwargs):
+        seen.append((path, dict(kwargs.get("params") or {})))
+        if path.endswith("/entry"):
+            return paged([{"id": "11111111-1111-1111-1111-111111111111", "name": "prod-db", "type": "Credential"}])
+        return FakeResponse(body={"data": {"password": "pw"}})
+
+    monkeypatch.setattr(session, "request", fake_request)
+    credential = helper().get_credential(session, "v", "Production\\Database\\prod-db")
+    assert credential == {"password": "pw"}
+    assert seen[0][1]["path"] == "Production\\Database"
+    assert seen[0][1]["name"] == "prod-db"

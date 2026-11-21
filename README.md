@@ -34,12 +34,20 @@ Breaking changes:
 - Private key credentials no longer carry `username`, `password`, `domain` and `privateKeyCertificateData`: v1
   returned the override username and password under those names too. Read `privateKeyOverrideUsername` and
   `privateKeyOverridePassword` instead.
+- Lookups: a term with `\` is a full path, the folder that holds the credential followed by its name
+  (`Production\Database\prod-db`). A term that names only a folder no longer returns the one credential in it.
+- `fetch_secrets` fails when two different entries it found share a name, the whole-vault fetch included, instead
+  of returning one of them; fetch such entries by `secret_id`. It also fails when a secret it found cannot be read,
+  instead of returning `{"error": ...}` under that secret's name.
 - Errors show the HTTP status and the message DVLS gave, never the raw response body.
 
 Other changes:
 
 - Lookups cache their session per server and application identity: a lookup that passes other `app_key` or
   `app_secret` values logs in with them instead of reusing the first session.
+- `secret_path` of `create_secret` and `fetch_secrets` accepts `/` as well as `\` between folders, and folder
+  names match ignoring case, as DVLS compares them: `Production/Database` updates the secret created under
+  `Production\Database` instead of creating a second one.
 
 Modules run on the target host by default, so that host is the one that needs
 network access to DVLS and the `requests` library. Add `delegate_to: localhost`
@@ -257,13 +265,16 @@ The `field` parameter in `devolutions.dvls.secret` supports:
 - `tenantId`, `clientId`, `clientSecret` (Azure Service Principal)
 - `privateKeyData`, `publicKeyData`, `privateKeyPassPhrase`, `privateKeyOverrideUsername`, `privateKeyOverridePassword` (SSH Key)
 
-### Lookup by Name or UUID
+### Lookup by Name, Path or UUID
 
-Both plugins support lookup by credential name or UUID:
+Both plugins support lookup by credential name, full path or UUID:
 
 ```yaml
 # By name
 lookup('devolutions.dvls.secret', 'prod-database')
+
+# By full path: the folder that holds the credential, then its name
+lookup('devolutions.dvls.secret', 'Production\\Database\\prod-database')
 
 # By UUID
 lookup('devolutions.dvls.secret', '12345678-1234-1234-1234-123456789012')
@@ -294,6 +305,11 @@ For example, if you want to access the ```apiId``` from an ```API key secret```,
 
 If there is an existing secret in that path, it will update the secret. Otherwise a new secret entry will be created.
 When a new secret was created or updated, the module will return the entry ID.
+
+The module lists the vault's entries, then updates the matching entry or creates one, and DVLS does not guarantee
+that it refuses a second entry with the same name in a folder. Two hosts that write the same secret at the same time
+can therefore both create it, and later runs then fail on the duplicate; serialize such writes, for example with
+`throttle: 1` on the task.
 
 ```yaml
 - name: Upload Credentials to DVLS

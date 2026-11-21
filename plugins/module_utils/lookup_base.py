@@ -15,8 +15,8 @@ try:
     )
     from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
         get_vault_entry,
+        get_vault_entry_from_full_path,
         get_vault_entry_from_name,
-        get_vault_entry_from_path,
         validate_unique_entry,
     )
 except ImportError:
@@ -150,7 +150,7 @@ class DVLSLookupHelper:
         Args:
             session: Session returned by authenticate()
             vault_id: Vault UUID
-            term: Credential identifier (name, path, or UUID)
+            term: Credential identifier (name, full path 'folder\\name', or UUID)
 
         Returns:
             dict: Complete credential object
@@ -163,7 +163,7 @@ class DVLSLookupHelper:
             credential = response.get("data", {})
         elif "\\" in term:
             self._display.vvv(f"Using path lookup for {term}")
-            response = get_vault_entry_from_path(session, vault_id, term)
+            response = get_vault_entry_from_full_path(session, vault_id, term)
             entries = response.get("data", [])
             if not entries:
                 raise self._ansible_error(

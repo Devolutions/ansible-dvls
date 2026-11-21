@@ -1,8 +1,26 @@
+import re
+
 from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
     raise_for_dvls_error,
 )
 
 PAGE_SIZE = 500
+
+
+def normalize_path(path):
+    """Return a folder path the way DVLS reads it: '/' and '\\' both separate folders, and empty
+    segments and the separators around the path are dropped."""
+    return re.sub(r"[\\/]+", r"\\", path or "").strip("\\")
+
+
+def same_path(left, right):
+    """Compare two folder paths as DVLS does, ignoring case (.NET OrdinalIgnoreCase maps each
+    character to its single-character uppercase form)."""
+
+    def fold(path):
+        return "".join(c.upper() if len(c.upper()) == 1 else c for c in normalize_path(path))
+
+    return fold(left) == fold(right)
 
 
 def filter_folders(data, exact_match_field=None, exact_match_value=None):
@@ -123,10 +141,28 @@ def get_vault_entry_from_tag(session, vault_id, entry_tag):
 
 
 def get_vault_entry_from_path(session, vault_id, entry_path):
+    """Return the entries directly in the folder entry_path, not in its sub-folders."""
     try:
-        entries = list_all(session, f"vault/{vault_id}/entry", {"path": entry_path})
+        params = {"exactPath": "true"}
+        if normalize_path(entry_path):
+            params["path"] = entry_path
+        entries = list_all(session, f"vault/{vault_id}/entry", params)
+        return filter_folders({"data": entries})
+    except Exception as e:
+        raise Exception(f"An error occurred while getting a vault entry: {e}")
+
+
+def get_vault_entry_from_full_path(session, vault_id, full_path):
+    """Return the entries named after the last segment of full_path in the folder the segments
+    before it name, as v2 gives an entry's path as the folder that holds it."""
+    folder, name = normalize_path(full_path).rpartition("\\")[::2]
+    try:
+        params = {"name": name, "exactPath": "true"}
+        if folder:
+            params["path"] = folder
+        entries = list_all(session, f"vault/{vault_id}/entry", params)
         return filter_folders(
-            {"data": entries}, exact_match_field="path", exact_match_value=entry_path
+            {"data": entries}, exact_match_field="name", exact_match_value=name
         )
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
@@ -155,7 +191,7 @@ def find_entry_by_name(entries, name, path=""):
     matching_entries = [
         entry
         for entry in non_folder_entries
-        if entry.get("name") == name and entry.get("path") == path
+        if entry.get("name") == name and same_path(entry.get("path"), path)
     ]
 
     validate_unique_entry(matching_entries, f"name '{name}' and path '{path}'")

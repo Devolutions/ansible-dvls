@@ -53,7 +53,9 @@ options:
                 required: false
                 type: str
             secret_path:
-                description: The path of the secret to fetch.
+                description:
+                    - The folder whose secrets to fetch, without its sub-folders.
+                    - Both C(/) and C(\) separate folders.
                 required: false
                 type: str
             secret_type:
@@ -79,6 +81,11 @@ options:
         required: false
         type: int
         default: 30
+
+notes:
+    - Secrets found by name, tag, path or type are returned under their entry name. The module fails when two
+      different entries share a name, since one would hide the other; fetch them by C(secret_id) instead.
+    - The module fails when a secret it found cannot be read, rather than return the others without it.
 
 author:
     - Danny Bédard (@DannyBedard)
@@ -190,6 +197,7 @@ def run_module():
         session.login()
 
         fetched_secrets = {}
+        listed_entries = []
 
         if secrets:
             for secret in secrets:
@@ -216,23 +224,21 @@ def run_module():
                     fetched_secrets[secret_id] = entry["data"]
                 elif secret_name:
                     entries = get_vault_entry_from_name(session, vault_id, secret_name)
-                    name_results = get_sensible_value(session, vault_id, entries)
-                    fetched_secrets.update(name_results)
+                    listed_entries.extend(entries["data"])
                 elif secret_tag:
                     entries = get_vault_entry_from_tag(session, vault_id, secret_tag)
-                    fetched_secrets.update(
-                        get_sensible_value(session, vault_id, entries)
-                    )
+                    listed_entries.extend(entries["data"])
                 elif secret_path:
                     entries = get_vault_entry_from_path(session, vault_id, secret_path)
-                    fetched_secrets.update(
-                        get_sensible_value(session, vault_id, entries)
-                    )
+                    listed_entries.extend(entries["data"])
                 elif secret_type:
                     entries = get_vault_entry_from_type(session, vault_id, secret_type)
-                    fetched_secrets.update(
-                        get_sensible_value(session, vault_id, entries)
-                    )
+                    listed_entries.extend(entries["data"])
+
+            # Read once over every search, so a name two searches give to different entries is an error.
+            fetched_secrets.update(
+                get_sensible_value(session, vault_id, listed_entries)
+            )
         else:
             fetched_secrets = get_sensible_value(
                 session,

@@ -19,7 +19,7 @@ options:
   _terms:
     description:
       - Credential identifier (name, path, or UUID) to retrieve.
-      - "Path format: 'folder\\\\subfolder\\\\credential-name'"
+      - "Path format: 'folder\\\\subfolder\\\\credential-name', the folder that holds the credential followed by its name."
     required: true
     type: str
   field:

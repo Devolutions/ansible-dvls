@@ -53,7 +53,9 @@ options:
                 required: true
                 type: str
             secret_path:
-                description: the (Folder-)Path where the secret should end up.
+                description:
+                    - the (Folder-)Path where the secret should end up.
+                    - Both C(/) and C(\) separate folders, and folder names match ignoring case, as DVLS compares them.
                 required: false
                 type: str
             secret_type:
@@ -85,6 +87,11 @@ options:
         required: false
         type: int
         default: 30
+
+notes:
+    - The module lists the vault's entries, then updates the entry with that name and folder or creates one. Two runs
+      that write the same name and folder at the same time can both find no entry and both create one, and later runs
+      then fail on the duplicate; serialize such writes, for example with the C(throttle) keyword set to 1.
 
 author:
     - Danny Bédard (@DannyBedard)
@@ -222,14 +229,7 @@ def run_module():
             "data": {"username": secret_name, "password": password},
         }
 
-        # this filters the response by path (folder)
-        path_entries = (
-            [entry for entry in entries if entry.get("path") == secret_path]
-            if secret_path
-            else entries
-        )
-
-        entry = find_entry_by_name(path_entries, secret_name, secret_path)
+        entry = find_entry_by_name(entries, secret_name, secret_path)
         if entry:
             vault_body["tags"] = entry.get("tags") or []
             response = session.request(
