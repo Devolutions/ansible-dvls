@@ -11,8 +11,43 @@ This Ansible module allows you to authenticate with DVLS and fetch server inform
 ## Requirements
 - Ansible 2.18
 - Python `requests` library, installed on the machine that runs the module
+- A DVLS release with the public API v2 (`/api/v2`). Version 2.0.0 of the collection calls only that API; stay on
+  1.x for an older DVLS.
 - A DVLS application identity (create at `{your-dvls-url}/administration/applications`).
   - The application must have permissions to fetch the desired secrets.
+
+## Upgrading to 2.0.0
+
+The collection now calls the DVLS public API v2. An application identity's token expires 7 minutes after login, so a
+request answered 401 logs in again once and is retried: lookups no longer fail in playbooks that run longer than that.
+Lists are read page by page, so name, tag, path and type searches and the vault list return every match instead of the
+first page, and folders of every subtype are left out of the results.
+
+Breaking changes:
+
+- `fetch_server`: `accessURI` is the `server_base_url` the module was given, since the API does not expose the
+  access URI configured on the server. `vaults` holds the vaults as v2 returns them: `businessUnitId` replaces
+  `businessUnitID`, and the PAM (Infrastructure) vault and the application identity's own user vault are no longer
+  listed.
+- `fetch_secrets`: a `secret_type` that is not an entry type DVLS knows (`Credential`, `Folder`, ...) fails with a
+  400 on `type` instead of returning no secrets, since DVLS now applies the filter itself.
+- Private key credentials no longer carry `username`, `password`, `domain` and `privateKeyCertificateData`: v1
+  returned the override username and password under those names too. Read `privateKeyOverrideUsername` and
+  `privateKeyOverridePassword` instead.
+- Lookups: a term with `\` is a full path, the folder that holds the credential followed by its name
+  (`Production\Database\prod-db`). A term that names only a folder no longer returns the one credential in it.
+- `fetch_secrets` fails when two different entries it found share a name, the whole-vault fetch included, instead
+  of returning one of them; fetch such entries by `secret_id`. It also fails when a secret it found cannot be read,
+  instead of returning `{"error": ...}` under that secret's name.
+- Errors show the HTTP status and the message DVLS gave, never the raw response body.
+
+Other changes:
+
+- Lookups cache their session per server and application identity: a lookup that passes other `app_key` or
+  `app_secret` values logs in with them instead of reusing the first session.
+- `secret_path` of `create_secret` and `fetch_secrets` accepts `/` as well as `\` between folders, and folder
+  names match ignoring case, as DVLS compares them: `Production/Database` updates the secret created under
+  `Production\Database` instead of creating a second one.
 
 Modules run on the target host by default, so that host is the one that needs
 network access to DVLS and the `requests` library. Add `delegate_to: localhost`
@@ -131,6 +166,8 @@ Use the following playbook to authenticate with DVLS and fetch every secrets fro
     msg: "{{ value.vaults[1].id }}"
 ```
 
+`accessURI` is the `server_base_url` the module was given.
+
 Example response
 
 ```json
@@ -141,15 +178,13 @@ Example response
         "failed": false,
         "vaults": [
             {
-                "description": "User vault for personal entries",
-                "id": "123e4567-e89b-12d3-a456-426614174000",
-                "type": "User"
-            },
-            {
+                "contentType": "Everything",
                 "description": "Shared vault for organization",
                 "id": "987f6543-d21c-43ba-987f-123456789abc",
                 "name": "Organization vault",
-                "type": "Shared"
+                "securityLevel": "Standard",
+                "type": "Shared",
+                "visibility": "Default"
             }
         ],
         "version": "2025.1.0.0"
@@ -228,15 +263,18 @@ The `field` parameter in `devolutions.dvls.secret` supports:
 - `connectionString` (Connection String)
 - `apiId`, `apiKey` (API Key)
 - `tenantId`, `clientId`, `clientSecret` (Azure Service Principal)
-- `privateKeyData`, `publicKeyData`, `privateKeyPassPhrase` (SSH Key)
+- `privateKeyData`, `publicKeyData`, `privateKeyPassPhrase`, `privateKeyOverrideUsername`, `privateKeyOverridePassword` (SSH Key)
 
-### Lookup by Name or UUID
+### Lookup by Name, Path or UUID
 
-Both plugins support lookup by credential name or UUID:
+Both plugins support lookup by credential name, full path or UUID:
 
 ```yaml
 # By name
 lookup('devolutions.dvls.secret', 'prod-database')
+
+# By full path: the folder that holds the credential, then its name
+lookup('devolutions.dvls.secret', 'Production\\Database\\prod-database')
 
 # By UUID
 lookup('devolutions.dvls.secret', '12345678-1234-1234-1234-123456789012')
@@ -252,8 +290,8 @@ To access a particular field within a secret, you can use the format ```{{ secre
 | Connection string         | `connectionString`                                                                                                        |
 | Secret                    | `password`                                                                                                                |
 | API key                   | `apiId`, `apiKey`, `tenantId`                                                                                             |
-| SSH key                   | `domain`, `password`, `privateKeyData`, `privateKeyOverridePassword`, `privateKeyPassPhrase`, `publicKeyData`, `username` |
-| Azure service principal   | `clientId`, `clientSecret`, `tenantId`                                                                                    |
+| SSH key                   | `privateKeyData`, `privateKeyOverridePassword`, `privateKeyOverrideUsername`, `privateKeyPassPhrase`, `publicKeyData`   |
+| Azure service principal   | `clientId`, `clientSecret`, `subscriptionId`, `tenantId`                                                                  |
 
 
 ### Example using secret value
@@ -267,6 +305,11 @@ For example, if you want to access the ```apiId``` from an ```API key secret```,
 
 If there is an existing secret in that path, it will update the secret. Otherwise a new secret entry will be created.
 When a new secret was created or updated, the module will return the entry ID.
+
+The module lists the vault's entries, then updates the matching entry or creates one, and DVLS does not guarantee
+that it refuses a second entry with the same name in a folder. Two hosts that write the same secret at the same time
+can therefore both create it, and later runs then fail on the duplicate; serialize such writes, for example with
+`throttle: 1` on the task.
 
 ```yaml
 - name: Upload Credentials to DVLS
@@ -293,7 +336,7 @@ Example with additional available options (Currently only the "Credential" type 
       secret_name: "my_secret_1"
       value: "p@ssw0rd1"
       secret_path: "path\\to\\folder"
-      secret_type: "Credentials"
+      secret_type: "Credential"
       secret_subtype: "Default"
       secret_description: "a description for the secret"
 ```

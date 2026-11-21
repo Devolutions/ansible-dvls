@@ -1,6 +1,26 @@
+import re
+
 from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
-    request as http_request,
+    raise_for_dvls_error,
 )
+
+PAGE_SIZE = 500
+
+
+def normalize_path(path):
+    """Return a folder path the way DVLS reads it: '/' and '\\' both separate folders, and empty
+    segments and the separators around the path are dropped."""
+    return re.sub(r"[\\/]+", r"\\", path or "").strip("\\")
+
+
+def same_path(left, right):
+    """Compare two folder paths as DVLS does, ignoring case (.NET OrdinalIgnoreCase maps each
+    character to its single-character uppercase form)."""
+
+    def fold(path):
+        return "".join(c.upper() if len(c.upper()) == 1 else c for c in normalize_path(path))
+
+    return fold(left) == fold(right)
 
 
 def filter_folders(data, exact_match_field=None, exact_match_value=None):
@@ -16,7 +36,7 @@ def filter_folders(data, exact_match_field=None, exact_match_value=None):
     """
 
     def should_include(entry):
-        if entry.get("subType") == "Folder":
+        if entry.get("type") == "Folder":
             return False
 
         if exact_match_field is not None and exact_match_value is not None:
@@ -55,144 +75,112 @@ def validate_unique_entry(entries, filter_description):
         )
 
 
-def get_vaults(server_base_url, token):
-    vaults_url = f"{server_base_url}/api/v1/vault"
-    vaults_headers = {"Content-Type": "application/json", "tokenId": token}
+def list_all(session, path, params=None):
+    """Fetch every page of a v2 list route and return the items of all pages."""
+    query = dict(params or {})
+    query["pageSize"] = PAGE_SIZE
+    items = []
+    page = 1
 
-    try:
-        response = http_request("GET", vaults_url, headers=vaults_headers)
-        response.raise_for_status()
+    while True:
+        query["pageNumber"] = page
+        response = session.request("GET", path, params=query)
+        raise_for_dvls_error(response)
 
         json_data = response.json()
-        if "data" not in json_data:
-            raise ValueError(f"'data' key missing in response: {json_data}")
+        if not isinstance(json_data, dict) or "data" not in json_data:
+            raise ValueError(f"The response of {path} has no 'data' key.")
 
-        return json_data.get("data", [])
+        data = json_data.get("data") or []
+        items.extend(data)
+
+        if not data or page >= json_data.get("totalPage", 0):
+            return items
+
+        page += 1
+
+
+def get_vaults(session):
+    try:
+        return list_all(session, "vault")
     except Exception as e:
         raise Exception(f"An error occurred while getting vaults: {e}")
 
 
-def get_vault_entry(server_base_url, token, vault_id, entry_id):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry_id}"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-
+def get_vault_entry(session, vault_id, entry_id):
     try:
-        response = http_request("GET", vault_url, headers=vault_headers)
-        response.raise_for_status()
+        response = session.request("GET", f"vault/{vault_id}/entry/{entry_id}")
+        raise_for_dvls_error(response)
 
         return response.json()
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
 
-def get_vault_entry_from_name(server_base_url, token, vault_id, entry_name):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-
+def get_vault_entry_from_name(session, vault_id, entry_name):
     try:
-        response = http_request(
-            "GET", vault_url, headers=vault_headers, params={"name": entry_name}
-        )
-        response.raise_for_status()
-
-        result = response.json()
+        entries = list_all(session, f"vault/{vault_id}/entry", {"name": entry_name})
 
         result = filter_folders(
-            result, exact_match_field="name", exact_match_value=entry_name
+            {"data": entries}, exact_match_field="name", exact_match_value=entry_name
         )
 
-        if isinstance(result, dict) and "data" in result:
-            validate_unique_entry(result.get("data", []), f"name '{entry_name}'")
+        validate_unique_entry(result.get("data", []), f"name '{entry_name}'")
 
         return result
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
 
-def get_vault_entry_from_tag(server_base_url, token, vault_id, entry_tag):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-
+def get_vault_entry_from_tag(session, vault_id, entry_tag):
     try:
-        response = http_request(
-            "GET", vault_url, headers=vault_headers, params={"tag": entry_tag}
-        )
-        response.raise_for_status()
-
-        result = response.json()
-        return filter_folders(result)
+        entries = list_all(session, f"vault/{vault_id}/entry", {"tag": entry_tag})
+        return filter_folders({"data": entries})
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
 
-def get_vault_entry_from_path(server_base_url, token, vault_id, entry_path):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-
+def get_vault_entry_from_path(session, vault_id, entry_path):
+    """Return the entries directly in the folder entry_path, not in its sub-folders."""
     try:
-        response = http_request(
-            "GET", vault_url, headers=vault_headers, params={"path": entry_path}
-        )
-        response.raise_for_status()
+        params = {"exactPath": "true"}
+        if normalize_path(entry_path):
+            params["path"] = entry_path
+        entries = list_all(session, f"vault/{vault_id}/entry", params)
+        return filter_folders({"data": entries})
+    except Exception as e:
+        raise Exception(f"An error occurred while getting a vault entry: {e}")
 
-        result = response.json()
+
+def get_vault_entry_from_full_path(session, vault_id, full_path):
+    """Return the entries named after the last segment of full_path in the folder the segments
+    before it name, as v2 gives an entry's path as the folder that holds it."""
+    folder, name = normalize_path(full_path).rpartition("\\")[::2]
+    try:
+        params = {"name": name, "exactPath": "true"}
+        if folder:
+            params["path"] = folder
+        entries = list_all(session, f"vault/{vault_id}/entry", params)
         return filter_folders(
-            result, exact_match_field="path", exact_match_value=entry_path
+            {"data": entries}, exact_match_field="name", exact_match_value=name
         )
-
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
 
-def get_vault_entry_from_type(server_base_url, token, vault_id, entry_type):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-
+def get_vault_entry_from_type(session, vault_id, entry_type):
     try:
-        response = http_request(
-            "GET", vault_url, headers=vault_headers, params={"type": entry_type}
-        )
-        response.raise_for_status()
-
-        result = response.json()
+        entries = list_all(session, f"vault/{vault_id}/entry", {"type": entry_type})
         return filter_folders(
-            result, exact_match_field="type", exact_match_value=entry_type
+            {"data": entries}, exact_match_field="type", exact_match_value=entry_type
         )
-
     except Exception as e:
         raise Exception(f"An error occurred while getting a vault entry: {e}")
 
 
-def get_vault_entries(server_base_url, token, vault_id):
-    vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-    vault_headers = {"Content-Type": "application/json", "tokenId": token}
-    all_entries = []
-    page = 1
-
+def get_vault_entries(session, vault_id):
     try:
-        while True:
-            response = http_request(
-                "GET",
-                vault_url,
-                headers=vault_headers,
-                params={"pageNumber": page},
-            )
-            response.raise_for_status()
-            json_data = response.json()
-            if "data" not in json_data:
-                raise ValueError(f"'data' key missing in response: {json_data}")
-            entries = json_data.get("data", [])
-            if not entries:
-                break
-
-            all_entries.extend(filter_folders(entries))
-
-            if page >= json_data.get("totalPage", 0):
-                break
-
-            page += 1
-
-        return all_entries
+        return filter_folders(list_all(session, f"vault/{vault_id}/entry"))
     except Exception as e:
         raise Exception(f"An error occurred while getting vault entries: {e}")
 
@@ -203,7 +191,7 @@ def find_entry_by_name(entries, name, path=""):
     matching_entries = [
         entry
         for entry in non_folder_entries
-        if entry.get("name") == name and entry.get("path") == path
+        if entry.get("name") == name and same_path(entry.get("path"), path)
     ]
 
     validate_unique_entry(matching_entries, f"name '{name}' and path '{path}'")

@@ -19,7 +19,7 @@ options:
   _terms:
     description:
       - Credential identifier (name, path, or UUID) to retrieve.
-      - "Path format: 'folder\\\\subfolder\\\\credential-name'"
+      - "Path format: 'folder\\\\subfolder\\\\credential-name', the folder that holds the credential followed by its name."
     required: true
     type: str
   field:
@@ -28,7 +28,8 @@ options:
       - Supported fields depend on credential type.
       - "Common fields include: username, password, domain, connectionString,"
       - "apiId, apiKey, tenantId, clientId, clientSecret, privateKeyData,"
-      - "publicKeyData, privateKeyPassPhrase."
+      - "publicKeyData, privateKeyPassPhrase, privateKeyOverrideUsername,"
+      - "privateKeyOverridePassword."
     type: str
     default: password
   server_base_url:
@@ -72,7 +73,7 @@ options:
     default: 30
 notes:
   - Requires network access to DVLS server.
-  - Authentication token is cached for the duration of the playbook run.
+  - The session is cached for the duration of the playbook run and logs in again when its token expires.
 """
 
 EXAMPLES = r"""
@@ -170,7 +171,7 @@ class LookupModule(LookupBase):
         self.set_options(var_options=variables, direct=kwargs)
 
         config = self._helper.get_config(self.get_option, variables)
-        self._helper.authenticate(
+        session = self._helper.authenticate(
             config["server_base_url"], config["app_key"], config["app_secret"]
         )
 
@@ -178,7 +179,7 @@ class LookupModule(LookupBase):
         for term in terms:
             try:
                 credential = self._helper.get_credential(
-                    config["server_base_url"], config["vault_id"], term
+                    session, config["vault_id"], term
                 )
                 result = self._transform_result(credential, term)
                 results.append(result)

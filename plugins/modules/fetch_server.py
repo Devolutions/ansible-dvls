@@ -73,12 +73,9 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
     configure as configure_http,
 )
 from ansible.module_utils.basic import AnsibleModule, env_fallback
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import Session
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import get_vaults
-from ansible_collections.devolutions.dvls.plugins.module_utils.server import (
-    public_instance_information,
-    private_instance_information,
-)
+from ansible_collections.devolutions.dvls.plugins.module_utils.server import server_info
 
 
 def run_module():
@@ -120,23 +117,19 @@ def run_module():
     app_key = module.params["app_key"]
     app_secret = module.params["app_secret"]
 
-    token = None
+    session = Session(server_base_url, app_key, app_secret)
 
     try:
-        token = login(server_base_url, app_key, app_secret)
-        vaults = get_vaults(server_base_url, token)
+        session.login()
+        vaults = get_vaults(session)
+        info = server_info(session)
 
-        public_info = public_instance_information(server_base_url, token)
-        private_info = private_instance_information(server_base_url, token)
-
-        if "version" not in public_info["data"]:
-            raise KeyError("version missing from fetched server']")
-        if "accessURI" not in private_info["data"]:
-            raise KeyError("accessURI missing from fetched server")
+        if "version" not in info:
+            raise KeyError("version missing from fetched server")
 
         result = {
-            "version": public_info["data"].get("version"),
-            "accessURI": private_info["data"].get("accessURI"),
+            "version": info.get("version"),
+            "accessURI": server_base_url,
             "vaults": vaults,
         }
 
@@ -145,9 +138,9 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        if token:
+        if session.token:
             try:
-                logout(server_base_url, token)
+                session.logout()
             except Exception:
                 module.warn("Failed to log out from DVLS.")
 
