@@ -3,7 +3,7 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
 )
 
 
-def get_sensible_value(server_base_url, token, vault_id, entries):
+def get_sensible_value(session, vault_id, entries):
     fetched_secrets = {}
 
     if isinstance(entries, dict) and "data" in entries:
@@ -21,7 +21,7 @@ def get_sensible_value(server_base_url, token, vault_id, entries):
             continue
 
         try:
-            entry = get_vault_entry(server_base_url, token, vault_id, secret["id"])
+            entry = get_vault_entry(session, vault_id, secret["id"])
             if isinstance(entry, dict) and "data" in entry:
                 fetched_secrets[entry_name] = entry["data"]
         except Exception as e:

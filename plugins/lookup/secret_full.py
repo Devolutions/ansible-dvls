@@ -64,7 +64,7 @@ options:
     default: 30
 notes:
   - Requires network access to DVLS server.
-  - Authentication token is cached for the duration of the playbook run.
+  - The session is cached for the duration of the playbook run and logs in again when its token expires.
   - Returns the complete credential object with all available fields.
 """
 

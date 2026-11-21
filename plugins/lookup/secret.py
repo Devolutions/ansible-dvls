@@ -28,7 +28,8 @@ options:
       - Supported fields depend on credential type.
       - "Common fields include: username, password, domain, connectionString,"
       - "apiId, apiKey, tenantId, clientId, clientSecret, privateKeyData,"
-      - "publicKeyData, privateKeyPassPhrase."
+      - "publicKeyData, privateKeyPassPhrase, privateKeyOverrideUsername,"
+      - "privateKeyOverridePassword."
     type: str
     default: password
   server_base_url:
@@ -72,7 +73,7 @@ options:
     default: 30
 notes:
   - Requires network access to DVLS server.
-  - Authentication token is cached for the duration of the playbook run.
+  - The session is cached for the duration of the playbook run and logs in again when its token expires.
 """
 
 EXAMPLES = r"""

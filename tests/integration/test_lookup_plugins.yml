@@ -102,7 +102,7 @@
       always:
         - name: Log in to DVLS for the cleanup
           ansible.builtin.uri:
-            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v1/login"
+            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v2/login"
             method: POST
             body_format: json
             body:
@@ -113,7 +113,7 @@
 
         - name: Delete the entry this run created
           ansible.builtin.uri:
-            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v1/vault/{{ lookup('env', 'DVLS_VAULT_ID') }}/entry/{{ item }}"
+            url: "{{ lookup('env', 'DVLS_SERVER_BASE_URL') }}/api/v2/vault/{{ lookup('env', 'DVLS_VAULT_ID') }}/entry/{{ item }}"
             method: DELETE
             headers:
               tokenId: "{{ cleanup_login.json.tokenId }}"

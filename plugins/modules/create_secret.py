@@ -116,26 +116,17 @@ from ansible.module_utils.basic import (
     env_fallback,
     missing_required_lib,
 )
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import Session
 from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
     HAS_REQUESTS_LIBRARY,
     REQUESTS_LIBRARY_IMPORT_ERROR,
     configure as configure_http,
-    request as http_request,
+    raise_for_dvls_error,
 )
 from ansible_collections.devolutions.dvls.plugins.module_utils.vaults import (
     get_vault_entries,
     find_entry_by_name,
 )
-
-
-def raise_for_dvls_error(response):
-    if response.ok:
-        return
-
-    raise Exception(
-        f"{response.status_code} {response.reason} from {response.url}: {response.text[:500]}"
-    )
 
 
 def run_module():
@@ -217,18 +208,14 @@ def run_module():
 
     vault_id = module.params.get("vault_id")
 
-    token = None
+    session = Session(server_base_url, app_key, app_secret)
 
     try:
-        token = login(server_base_url, app_key, app_secret)
-        entries = get_vault_entries(server_base_url, token, vault_id)
-
-        vault_headers = {"Content-Type": "application/json", "tokenId": token}
+        session.login()
+        entries = get_vault_entries(session, vault_id)
 
         vault_body = {
             "name": secret_name,
-            "type": secret_type,
-            "subType": secret_subtype,
             "path": secret_path,
             "description": description or "",
             "tags": [],
@@ -245,16 +232,16 @@ def run_module():
         entry = find_entry_by_name(path_entries, secret_name, secret_path)
         if entry:
             vault_body["tags"] = entry.get("tags") or []
-            vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry/{entry['id']}"
-            response = http_request(
-                "PUT", vault_url, headers=vault_headers, json=vault_body
+            response = session.request(
+                "PUT", f"vault/{vault_id}/entry/{entry['id']}", json=vault_body
             )
             raise_for_dvls_error(response)
             result["id"] = entry["id"]
         else:
-            vault_url = f"{server_base_url}/api/v1/vault/{vault_id}/entry"
-            response = http_request(
-                "POST", vault_url, headers=vault_headers, json=vault_body
+            vault_body["type"] = secret_type
+            vault_body["subType"] = secret_subtype
+            response = session.request(
+                "POST", f"vault/{vault_id}/entry", json=vault_body
             )
             raise_for_dvls_error(response)
             result["id"] = response.json()["id"]
@@ -264,9 +251,9 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        if token:
+        if session.token:
             try:
-                logout(server_base_url, token)
+                session.logout()
             except Exception:
                 module.warn("Failed to log out from DVLS.")
 

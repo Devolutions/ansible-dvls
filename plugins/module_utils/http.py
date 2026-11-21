@@ -35,3 +35,12 @@ def request(method, url, **kwargs):
         kwargs.setdefault(key, value)
 
     return requests.request(method, url, **kwargs)
+
+
+def raise_for_dvls_error(response):
+    if response.ok:
+        return
+
+    raise Exception(
+        f"{response.status_code} {response.reason} from {response.url}: {response.text[:500]}"
+    )

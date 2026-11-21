@@ -109,7 +109,7 @@ from ansible_collections.devolutions.dvls.plugins.module_utils.http import (
     configure as configure_http,
 )
 from ansible.module_utils.basic import AnsibleModule, env_fallback
-from ansible_collections.devolutions.dvls.plugins.module_utils.auth import login, logout
+from ansible_collections.devolutions.dvls.plugins.module_utils.auth import Session
 from ansible_collections.devolutions.dvls.plugins.module_utils.utils import (
     get_sensible_value,
 )
@@ -184,10 +184,10 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
 
-    token = None
+    session = Session(server_base_url, app_key, app_secret)
 
     try:
-        token = login(server_base_url, app_key, app_secret)
+        session.login()
 
         fetched_secrets = {}
 
@@ -212,43 +212,32 @@ def run_module():
                     )
 
                 if secret_id:
-                    entry = get_vault_entry(server_base_url, token, vault_id, secret_id)
+                    entry = get_vault_entry(session, vault_id, secret_id)
                     fetched_secrets[secret_id] = entry["data"]
                 elif secret_name:
-                    entries = get_vault_entry_from_name(
-                        server_base_url, token, vault_id, secret_name
-                    )
-                    name_results = get_sensible_value(
-                        server_base_url, token, vault_id, entries
-                    )
+                    entries = get_vault_entry_from_name(session, vault_id, secret_name)
+                    name_results = get_sensible_value(session, vault_id, entries)
                     fetched_secrets.update(name_results)
                 elif secret_tag:
-                    entries = get_vault_entry_from_tag(
-                        server_base_url, token, vault_id, secret_tag
-                    )
+                    entries = get_vault_entry_from_tag(session, vault_id, secret_tag)
                     fetched_secrets.update(
-                        get_sensible_value(server_base_url, token, vault_id, entries)
+                        get_sensible_value(session, vault_id, entries)
                     )
                 elif secret_path:
-                    entries = get_vault_entry_from_path(
-                        server_base_url, token, vault_id, secret_path
-                    )
+                    entries = get_vault_entry_from_path(session, vault_id, secret_path)
                     fetched_secrets.update(
-                        get_sensible_value(server_base_url, token, vault_id, entries)
+                        get_sensible_value(session, vault_id, entries)
                     )
                 elif secret_type:
-                    entries = get_vault_entry_from_type(
-                        server_base_url, token, vault_id, secret_type
-                    )
+                    entries = get_vault_entry_from_type(session, vault_id, secret_type)
                     fetched_secrets.update(
-                        get_sensible_value(server_base_url, token, vault_id, entries)
+                        get_sensible_value(session, vault_id, entries)
                     )
         else:
             fetched_secrets = get_sensible_value(
-                server_base_url,
-                token,
+                session,
                 vault_id,
-                get_vault_entries(server_base_url, token, vault_id),
+                get_vault_entries(session, vault_id),
             )
 
         result = fetched_secrets
@@ -256,9 +245,9 @@ def run_module():
     except Exception as e:
         module.fail_json(msg=str(e), **result)
     finally:
-        if token:
+        if session.token:
             try:
-                logout(server_base_url, token)
+                session.logout()
             except Exception:
                 module.warn("Failed to log out from DVLS.")
 
