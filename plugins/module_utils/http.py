@@ -42,5 +42,34 @@ def raise_for_dvls_error(response):
         return
 
     raise Exception(
-        f"{response.status_code} {response.reason} from {response.url}: {response.text[:500]}"
+        f"{response.status_code} {response.reason} from {response.url}{_error_detail(response)}"
     )
+
+
+def _error_detail(response):
+    # Only the messages of a DVLS error body are shown: any other body (a proxy page, a stack trace)
+    # can carry data that must not reach the Ansible output or its logs.
+    try:
+        body = response.json()
+    except ValueError:
+        return ""
+
+    if not isinstance(body, dict):
+        return ""
+
+    parts = []
+    message = body.get("message")
+    if isinstance(message, str) and message:
+        parts.append(message)
+
+    errors = body.get("errors")
+    for error in errors if isinstance(errors, list) else []:
+        if not isinstance(error, dict) or not isinstance(error.get("message"), str):
+            continue
+        field = error.get("field")
+        parts.append(
+            f"{field}: {error['message']}" if isinstance(field, str) and field else error["message"]
+        )
+
+    detail = "; ".join(parts)[:500]
+    return f": {detail}" if detail else ""

@@ -70,8 +70,8 @@ def list_all(session, path, params=None):
         raise_for_dvls_error(response)
 
         json_data = response.json()
-        if "data" not in json_data:
-            raise ValueError(f"'data' key missing in response: {json_data}")
+        if not isinstance(json_data, dict) or "data" not in json_data:
+            raise ValueError(f"The response of {path} has no 'data' key.")
 
         data = json_data.get("data") or []
         items.extend(data)

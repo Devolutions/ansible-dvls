@@ -34,6 +34,7 @@ Breaking changes:
 - Private key credentials no longer carry `username`, `password`, `domain` and `privateKeyCertificateData`: v1
   returned the override username and password under those names too. Read `privateKeyOverrideUsername` and
   `privateKeyOverridePassword` instead.
+- Errors show the HTTP status and the message DVLS gave, never the raw response body.
 
 Modules run on the target host by default, so that host is the one that needs
 network access to DVLS and the `requests` library. Add `delegate_to: localhost`
