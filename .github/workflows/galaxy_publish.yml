@@ -7,12 +7,14 @@ jobs:
   publish:
     environment: publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build
         id: build
@@ -21,8 +23,8 @@ jobs:
           echo "$OUTPUT"
           COLLECTION_PATH=$(echo "$OUTPUT" | grep -o '/[^ ]*\.tar\.gz')
           VERSION=$(echo "$COLLECTION_PATH" | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//')
-          echo "collection_path=$COLLECTION_PATH" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "collection_path=$COLLECTION_PATH" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Collection path: $COLLECTION_PATH"
           echo "Collection version: $VERSION"
 
@@ -37,17 +39,19 @@ jobs:
 
   create-release:
     name: Create release
-    runs-on: ubuntu-latest
     needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # fetch all tags for the set version step
 
       - name: Check out Devolutions/actions
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Devolutions/actions
           ref: v1

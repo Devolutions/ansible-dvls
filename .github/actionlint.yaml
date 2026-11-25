@@ -1,0 +1,5 @@
+paths:
+  "**/.github/workflows/galaxy_publish.yml":
+    ignore:
+      # The file name is the workflow_dispatch identifier used to trigger the Galaxy publish.
+      - 'must be kebab-case'
